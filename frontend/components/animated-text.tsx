@@ -5,11 +5,12 @@ import { motion } from "framer-motion"
 interface AnimatedTextProps {
   text: string
   delay?: number
+  className?: string
 }
 
-export function AnimatedText({ text, delay = 0 }: AnimatedTextProps) {
+export function AnimatedText({ text, delay = 0, className = "" }: AnimatedTextProps) {
   return (
-    <span className="text-7xl">
+    <span className={className}>
       {text.split("").map((char, index) => (
         <motion.span
           key={index}

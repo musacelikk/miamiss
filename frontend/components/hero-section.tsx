@@ -64,27 +64,31 @@ export function HeroSection() {
       </div>
 
       {/* Content */}
-      <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-32 w-full">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-32 w-full">
         <div className="max-w-3xl">
-          <p className="reveal opacity-0 text-sm uppercase tracking-[0.25em] text-background/80 font-medium mb-6">
+          <p className="reveal opacity-0 text-xs sm:text-sm uppercase tracking-[0.25em] text-background/80 font-medium mb-4 sm:mb-6">
             Ev Dekorasyon & Aksesuar
           </p>
-          <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-medium leading-[1.1] text-background text-balance mb-8">
-            <AnimatedText text="Eviniz" delay={0.2} />
-            <br />
-            <span className="text-accent">
-              <AnimatedText text="Sizin Sanat Eseriniz" delay={0.5} />
-            </span>
+          <h1 className="mb-6 sm:mb-8">
+            <AnimatedText
+              text="Eviniz"
+              delay={0.2}
+              className="block font-serif text-4xl md:text-5xl lg:text-6xl font-medium leading-tight text-background"
+            />
+            <AnimatedText
+              text="Sizin Sanat Eseriniz"
+              delay={0.5}
+              className="block font-serif text-4xl md:text-5xl lg:text-6xl font-medium leading-tight text-accent"
+            />
           </h1>
-          <p className="reveal opacity-0 animation-delay-400 text-lg text-background/85 leading-relaxed mb-10">
-          Sınırlı sayıda üretilen vazo ve dekoratif objelerle evinizdeki hikâyeyi yeniden yazın.
-
+          <p className="reveal opacity-0 animation-delay-400 text-sm sm:text-base lg:text-lg text-background/85 leading-relaxed mb-8 sm:mb-10">
+            Sınırlı sayıda üretilen vazo ve dekoratif objelerle evinizdeki hikâyeyi yeniden yazın.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <Button
               asChild
               size="lg"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-8 py-6 text-base group"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base group"
             >
               <Link href="/urunler">
                 Koleksiyonu keşfet
@@ -95,22 +99,22 @@ export function HeroSection() {
               asChild
               size="lg"
               variant="outline"
-              className="rounded-full px-8 py-6 text-base border-background/40 hover:bg-background/15 text-background bg-transparent backdrop-blur-sm"
+              className="rounded-full px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base border-background/40 hover:bg-background/15 text-background bg-transparent backdrop-blur-sm"
             >
               <Link href="#mission">Mia Miss hakkında</Link>
             </Button>
           </div>
 
           {/* Floating trust badges */}
-          <div className="reveal opacity-0 animation-delay-600 flex flex-wrap gap-6 mt-12">
+          <div className="reveal opacity-0 animation-delay-600 flex flex-wrap gap-4 sm:gap-6 mt-8 sm:mt-12">
             {[
               { value: "50+", label: "Ürün çeşidi" },
               { value: "10K+", label: "Mutlu müşteri" },
               { value: "2-4 gün", label: "Kargo süresi" },
             ].map((badge) => (
               <div key={badge.label} className="flex flex-col">
-                <span className="font-serif text-2xl text-background font-medium">{badge.value}</span>
-                <span className="text-xs text-background/70 uppercase tracking-wider">{badge.label}</span>
+                <span className="font-serif text-xl sm:text-2xl text-background font-medium">{badge.value}</span>
+                <span className="text-[10px] sm:text-xs text-background/70 uppercase tracking-wider">{badge.label}</span>
               </div>
             ))}
           </div>

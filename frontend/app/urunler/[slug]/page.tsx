@@ -114,7 +114,7 @@ export default function ProductDetailPage({ params }: Props) {
               </Button>
             </header>
 
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 md:gap-6 md:grid-cols-3">
               {related.map((item) => (
                 <Link
                   key={item.id}
