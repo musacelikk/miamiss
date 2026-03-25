@@ -95,28 +95,6 @@ export function HeroSection() {
                 <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
             </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="rounded-full px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base border-background/40 hover:bg-background/15 text-background bg-transparent backdrop-blur-sm"
-            >
-              <Link href="#mission">Mia Miss hakkında</Link>
-            </Button>
-          </div>
-
-          {/* Floating trust badges */}
-          <div className="reveal opacity-0 animation-delay-600 flex flex-wrap gap-4 sm:gap-6 mt-8 sm:mt-12">
-            {[
-              { value: "50+", label: "Ürün çeşidi" },
-              { value: "10K+", label: "Mutlu müşteri" },
-              { value: "2-4 gün", label: "Kargo süresi" },
-            ].map((badge) => (
-              <div key={badge.label} className="flex flex-col">
-                <span className="font-serif text-xl sm:text-2xl text-background font-medium">{badge.value}</span>
-                <span className="text-[10px] sm:text-xs text-background/70 uppercase tracking-wider">{badge.label}</span>
-              </div>
-            ))}
           </div>
         </div>
       </div>

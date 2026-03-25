@@ -172,6 +172,59 @@ html {
   animation: zoom-in 1.2s ease-out forwards;
 }
 
+/* Word game button glow + moving sheen */
+@keyframes miaWordPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 10px 30px rgba(0, 0, 0, 0.12),
+      0 0 0 rgba(52, 199, 89, 0.0);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow:
+      0 14px 40px rgba(0, 0, 0, 0.16),
+      0 0 18px rgba(52, 199, 89, 0.22);
+    filter: brightness(1.04);
+  }
+}
+
+@keyframes miaWordSheen {
+  0% {
+    transform: translateX(-120%) rotate(25deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(120%) rotate(25deg);
+    opacity: 0;
+  }
+}
+
+.mia-word-game-btn {
+  background: linear-gradient(90deg, oklch(0.42 0.07 148), oklch(0.55 0.06 140));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  overflow: hidden;
+  cursor: pointer;
+  animation: miaWordPulse 2.2s ease-in-out infinite;
+}
+
+.mia-word-game-btn::after {
+  content: "";
+  position: absolute;
+  top: -80%;
+  left: -60%;
+  width: 60%;
+  height: 240%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.65) 50%, transparent 100%);
+  transform: rotate(25deg);
+  animation: miaWordSheen 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
 /* Hide scrollbar for carousel while maintaining scroll functionality */
 .scrollbar-hide {
   -ms-overflow-style: none;

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Instagram, Mail, MapPin, Phone } from "lucide-react"
+import { Facebook, Instagram, Mail, MailIcon, MapPin, MessageCircle, Phone, X } from "lucide-react"
 
 const footerLinks = {
   urunler: [
@@ -31,8 +31,7 @@ export function Footer() {
               <img src="/logo/logo-w.png" alt="Mia Miss logo" className="h-14 w-auto md:h-20" />
             </Link>
             <p className="text-background/70 leading-relaxed mb-6 max-w-sm text-sm">
-              Evinizi yaşayan bir mekâna dönüştürecek özenle seçilmiş ev dekorasyon ve aksesuar koleksiyonu.
-              Doğal malzemeler, zamansız tasarım.
+            Mia Miss Ailesinin Bir Parçası Ol
             </p>
 
             {/* Social */}
@@ -45,6 +44,33 @@ export function Footer() {
                 aria-label="Instagram"
               >
                 <Instagram className="w-4 h-4" />
+              </a>
+              <a
+                href="https://x.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 rounded-full bg-background/10 border border-background/20 flex items-center justify-center hover:bg-background/20 transition-colors"
+                aria-label="X"
+              >
+                <X className="w-4 h-4" />
+              </a>
+              <a
+                href="https://tiktok.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 rounded-full bg-background/10 border border-background/20 flex items-center justify-center hover:bg-background/20 transition-colors"
+                aria-label="TikTok"
+              >
+                <MessageCircle className="w-4 h-4" />
+              </a>
+              <a
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 rounded-full bg-background/10 border border-background/20 flex items-center justify-center hover:bg-background/20 transition-colors"
+                aria-label="YouTube"
+              >
+                <MailIcon className="w-4 h-4" />
               </a>
             </div>
 
@@ -109,7 +135,7 @@ export function Footer() {
 
         {/* Bottom */}
         <div className="border-t border-background/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-background/40">© 2025 Mia Miss. Tüm hakları saklıdır.</p>
+          <p className="text-sm text-background/40">© 2026 Mia Miss. Tüm hakları saklıdır.</p>
           <div className="flex gap-6 text-sm text-background/40">
             <Link href="#" className="hover:text-background/70 transition-colors">
               Aydınlatma metni

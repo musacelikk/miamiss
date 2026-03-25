@@ -4,6 +4,8 @@ import { DM_Sans, Fraunces } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { CartProvider } from "@/components/cart-context"
+import { FavoritesProvider } from "@/components/favorites-context"
+import { WordGameModal } from "@/components/word-game-modal"
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -48,8 +50,11 @@ export default function RootLayout({
     <html lang="tr">
       <body className={`${dmSans.variable} ${fraunces.variable} font-sans antialiased`}>
         <CartProvider>
-          {children}
-          <Analytics />
+          <FavoritesProvider>
+            {children}
+            <WordGameModal />
+            <Analytics />
+          </FavoritesProvider>
         </CartProvider>
       </body>
     </html>

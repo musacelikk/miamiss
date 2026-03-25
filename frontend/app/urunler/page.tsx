@@ -1,15 +1,20 @@
 "use client"
 
 import Link from "next/link"
-import { Plus } from "lucide-react"
+import { Heart, Plus } from "lucide-react"
 import { products } from "@/lib/products"
 import { Button } from "@/components/ui/button"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useCart } from "@/components/cart-context"
+import { useFavorites } from "@/components/favorites-context"
+import { useRouter } from "next/navigation"
 
 export default function ProductsPage() {
   const { addToCart } = useCart()
+  const router = useRouter()
+  const { favoriteIds, isFavorite, toggleFavorite } = useFavorites()
+  const isLoggedIn = false
 
   return (
     <>
@@ -52,13 +57,34 @@ export default function ProductsPage() {
                 {/* --- MOBİL KART (sm altı) --- */}
                 <div className="sm:hidden bg-card rounded-2xl overflow-hidden border border-border/50 shadow-sm flex flex-col">
                   {/* Resim — tıklayınca detaya gider */}
-                  <Link href={`/urunler/${product.slug}`} className="block relative aspect-square overflow-hidden bg-muted">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </Link>
+                  <div className="relative aspect-square overflow-hidden bg-muted">
+                    <Link href={`/urunler/${product.slug}`} className="block w-full h-full">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </Link>
+                    <button
+                      type="button"
+                      aria-label="Beğen"
+                      className="absolute top-3 right-3 w-9 h-9 rounded-full bg-background/70 border border-border/50 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background/90"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (!isLoggedIn) {
+                          router.push("/giris")
+                          return
+                        }
+                        toggleFavorite(product)
+                      }}
+                    >
+                      <Heart
+                        className="w-4 h-4"
+                        fill={isFavorite(product.id) ? "currentColor" : "none"}
+                      />
+                    </button>
+                  </div>
                   {/* Alt kısım */}
                   <div className="p-2.5 flex flex-col gap-1.5">
                     <Link href={`/urunler/${product.slug}`}>
@@ -93,6 +119,25 @@ export default function ProductsPage() {
                     <span className="absolute top-4 left-4 bg-background/92 backdrop-blur-sm text-foreground text-xs font-medium px-3 py-1.5 rounded-full">
                       {product.category}
                     </span>
+                    <button
+                      type="button"
+                      aria-label="Beğen"
+                      className="absolute top-3 right-3 w-10 h-10 rounded-full bg-background/70 border border-border/50 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background/90"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (!isLoggedIn) {
+                          router.push("/giris")
+                          return
+                        }
+                        toggleFavorite(product)
+                      }}
+                    >
+                      <Heart
+                        className="w-4 h-4"
+                        fill={isFavorite(product.id) ? "currentColor" : "none"}
+                      />
+                    </button>
                   </div>
                   <div className="p-6 lg:p-7 flex-1 flex flex-col">
                     <h2 className="font-serif text-foreground mb-2 text-lg md:text-2xl font-normal leading-snug">
