@@ -21,7 +21,7 @@ export default function KayitPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-background pt-28 pb-24">
+      <main className="min-h-screen bg-background pt-40 pb-24">
         <section className="max-w-md mx-auto px-6 lg:px-0 space-y-8">
           <header className="space-y-3 text-center">
             <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground font-medium">Kayıt ol</p>
