@@ -323,6 +323,8 @@ export interface OrderItem {
   id: string
   itemType: "PRODUCT" | "GIFT_CARD"
   productId: string | null
+  variantId?: string | null
+  variantName?: string | null
   name: string
   imageUrl: string | null
   unitPrice: number
@@ -350,6 +352,12 @@ export interface Order {
   shippingAddress: string
   shippingZip: string | null
   note: string | null
+  invoiceType?: string
+  invoiceTckn?: string | null
+  invoiceCompanyName?: string | null
+  invoiceTaxNo?: string | null
+  invoiceTaxOffice?: string | null
+  invoiceAddress?: string | null
   trackingNo: string | null
   cargoCompany: string | null
   items: OrderItem[]

@@ -88,7 +88,11 @@ function OrderTrackContent() {
 
       {order && (
         <div className="mt-8">
-          <OrderCard order={order} />
+          <OrderCard
+            order={order}
+            cancelEmail={email}
+            onCancelled={() => void track(orderNo, email)}
+          />
         </div>
       )}
     </div>

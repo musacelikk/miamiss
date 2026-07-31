@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useEffect, useState } from "react"
 import {
   BellRing,
@@ -225,12 +226,14 @@ export function ProductDetailClient({ slug }: { slug: string }) {
       <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
         {/* Galeri */}
         <div>
-          <div className="relative overflow-hidden rounded-md bg-muted">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div className="relative aspect-square overflow-hidden rounded-md bg-muted">
+            <Image
               src={imageUrl(images[activeImage]?.url)}
               alt={product.name}
-              className="aspect-square w-full object-cover"
+              fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              priority
+              className="object-cover"
             />
             {compareAt && compareAt > price && (
               <span className="absolute left-4 top-4 rounded-sm bg-accent px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-accent-foreground">

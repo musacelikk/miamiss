@@ -214,7 +214,14 @@ export default function AccountPage() {
           ) : (
             <div className="space-y-5">
               {orders.map((o) => (
-                <OrderCard key={o.id} order={o} />
+                <OrderCard
+                  key={o.id}
+                  order={o}
+                  cancelEmail={user.email}
+                  onCancelled={() =>
+                    api<Order[]>("/orders/mine").then(setOrders).catch(() => {})
+                  }
+                />
               ))}
             </div>
           ))}

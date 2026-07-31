@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Heart, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { useCart, useFavorites } from "@/components/providers"
@@ -32,23 +33,23 @@ export function ProductCard({ product }: { product: Product }) {
       className="group relative block"
     >
       <div className="relative aspect-[4/5] overflow-hidden rounded-md bg-muted">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={imageUrl(cover)}
           alt={product.name}
+          fill
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           className={cn(
-            "h-full w-full object-cover transition-all duration-700 group-hover:scale-[1.04]",
+            "object-cover transition-all duration-700 group-hover:scale-[1.04]",
             hover && "group-hover:opacity-0",
           )}
-          loading="lazy"
         />
         {hover && (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
+          <Image
             src={imageUrl(hover)}
             alt={product.name}
-            className="absolute inset-0 h-full w-full scale-[1.04] object-cover opacity-0 transition-all duration-700 group-hover:opacity-100"
-            loading="lazy"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="scale-[1.04] object-cover opacity-0 transition-all duration-700 group-hover:opacity-100"
           />
         )}
 

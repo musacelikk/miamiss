@@ -1,6 +1,9 @@
 "use client"
 
-import { Check, Package, Truck, X } from "lucide-react"
+import { useState } from "react"
+import { Check, Loader2, Package, Truck, X } from "lucide-react"
+import { toast } from "sonner"
+import { api } from "@/lib/api"
 import {
   imageUrl,
   ORDER_STATUS_TR,
@@ -68,7 +71,47 @@ export function OrderStatusTimeline({ status }: { status: Order["status"] }) {
   )
 }
 
-export function OrderCard({ order }: { order: Order }) {
+export function OrderCard({
+  order,
+  cancelEmail,
+  onCancelled,
+}: {
+  order: Order
+  /** Verilirse ve siparis henuz hazirlanmadiysa iptal butonu gosterilir */
+  cancelEmail?: string
+  onCancelled?: () => void
+}) {
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelled, setCancelled] = useState(false)
+  const canCancel =
+    !!cancelEmail &&
+    !cancelled &&
+    (order.status === "PENDING" || order.status === "CONFIRMED")
+
+  const cancelOrder = async () => {
+    if (!cancelEmail) return
+    if (
+      !confirm(
+        `${order.orderNo} numaralı siparişiniz iptal edilecek. Emin misiniz?`,
+      )
+    )
+      return
+    setCancelling(true)
+    try {
+      await api("/orders/cancel", {
+        method: "POST",
+        body: JSON.stringify({ orderNo: order.orderNo, email: cancelEmail }),
+      })
+      toast.success("Siparişiniz iptal edildi.")
+      setCancelled(true)
+      onCancelled?.()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "İptal edilemedi")
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   return (
     <div className="rounded-md border border-border bg-card p-6">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
@@ -111,7 +154,14 @@ export function OrderCard({ order }: { order: Order }) {
               </div>
             )}
             <div className="flex-1">
-              <p className="font-medium">{item.name}</p>
+              <p className="font-medium">
+                {item.name}
+                {item.variantName && (
+                  <span className="ml-1.5 text-xs font-normal text-accent">
+                    ({item.variantName})
+                  </span>
+                )}
+              </p>
               <p className="text-xs text-muted-foreground">
                 {item.quantity} adet × {formatPrice(item.unitPrice)}
               </p>
@@ -125,6 +175,23 @@ export function OrderCard({ order }: { order: Order }) {
           </li>
         ))}
       </ul>
+
+      {cancelled ? (
+        <p className="mt-4 rounded-md bg-destructive/10 p-3 text-center text-xs font-semibold text-destructive">
+          Sipariş iptal edildi
+        </p>
+      ) : (
+        canCancel && (
+          <button
+            onClick={() => void cancelOrder()}
+            disabled={cancelling}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-md border border-destructive/40 py-2.5 text-xs font-semibold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
+          >
+            {cancelling && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Siparişi İptal Et
+          </button>
+        )
+      )}
     </div>
   )
 }

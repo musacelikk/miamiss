@@ -44,6 +44,12 @@ export interface CreateOrderInput {
   shippingAddress: string;
   shippingZip?: string;
   note?: string;
+  invoiceType?: 'INDIVIDUAL' | 'CORPORATE';
+  invoiceTckn?: string;
+  invoiceCompanyName?: string;
+  invoiceTaxNo?: string;
+  invoiceTaxOffice?: string;
+  invoiceAddress?: string;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -268,6 +274,12 @@ export class OrdersService {
           shippingDistrict: input.shippingDistrict,
           shippingAddress: input.shippingAddress,
           shippingZip: input.shippingZip ?? null,
+          invoiceType: input.invoiceType ?? 'INDIVIDUAL',
+          invoiceTckn: input.invoiceTckn ?? null,
+          invoiceCompanyName: input.invoiceCompanyName ?? null,
+          invoiceTaxNo: input.invoiceTaxNo ?? null,
+          invoiceTaxOffice: input.invoiceTaxOffice ?? null,
+          invoiceAddress: input.invoiceAddress ?? null,
           note: input.note ?? null,
           items: orderItems,
         }),
@@ -359,6 +371,29 @@ export class OrdersService {
       }
     }
     return order;
+  }
+
+  /**
+   * Musteri iptali: siparis no + e-posta esles ve siparis henuz
+   * hazirlanmaya baslamamis (PENDING/CONFIRMED) olsun.
+   */
+  async cancelByCustomer(orderNo: string, email: string): Promise<Order> {
+    const order = await this.orders.findOne({
+      where: {
+        orderNo: orderNo.trim().toUpperCase(),
+        email: email.trim().toLowerCase(),
+      },
+    });
+    if (!order) throw new NotFoundException('Sipariş bulunamadı.');
+    if (order.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('Bu sipariş zaten iptal edilmiş.');
+    }
+    if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.CONFIRMED) {
+      throw new BadRequestException(
+        'Siparişiniz hazırlanmaya başlandığı için buradan iptal edilemiyor. Destek ekibimize yazabilirsiniz.',
+      );
+    }
+    return this.cancel(order.id);
   }
 
   async cancel(orderId: string): Promise<Order> {

@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import Image from "next/image"
 import { imageUrl } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -45,13 +46,14 @@ export function HeroGallery({ images, badge }: { images: string[]; badge?: strin
         className="flex snap-x snap-mandatory overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {images.map((src, i) => (
-          <div key={`${src}-${i}`} className="w-full shrink-0 snap-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div key={`${src}-${i}`} className="relative aspect-[4/5] w-full shrink-0 snap-center">
+            <Image
               src={imageUrl(src)}
               alt="Miamisu Home"
-              className="aspect-[4/5] w-full object-cover"
-              loading={i === 0 ? "eager" : "lazy"}
+              fill
+              sizes="100vw"
+              priority={i === 0}
+              className="object-cover"
             />
           </div>
         ))}

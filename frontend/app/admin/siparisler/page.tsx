@@ -89,7 +89,11 @@ function OrderRow({ order, onChanged }: { order: Order; onChanged: () => void })
                       </div>
                     )}
                     <span className="flex-1">
-                      {item.name} <span className="text-muted-foreground">× {item.quantity}</span>
+                      {item.name}
+                      {item.variantName && (
+                        <span className="text-accent"> ({item.variantName})</span>
+                      )}{" "}
+                      <span className="text-muted-foreground">× {item.quantity}</span>
                       {item.boughtGiftCard?.code && (
                         <span className="ml-2 font-mono text-xs text-accent">
                           {item.boughtGiftCard.code}
@@ -145,6 +149,31 @@ function OrderRow({ order, onChanged }: { order: Order; onChanged: () => void })
                     <span className="text-muted-foreground">{order.note}</span>
                   </p>
                 )}
+              </div>
+
+              {/* Fatura bilgileri */}
+              <div className="mt-3 rounded-md bg-secondary/50 p-3 text-xs leading-relaxed">
+                <p className="font-semibold">
+                  Fatura ({order.invoiceType === "CORPORATE" ? "Kurumsal" : "Bireysel"})
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  {order.invoiceType === "CORPORATE" ? (
+                    <>
+                      {order.invoiceCompanyName ?? "—"}
+                      <br />
+                      Vergi No: {order.invoiceTaxNo ?? "—"}
+                      {order.invoiceTaxOffice && ` · ${order.invoiceTaxOffice} V.D.`}
+                    </>
+                  ) : (
+                    <>TCKN: {order.invoiceTckn ?? "Belirtilmedi"}</>
+                  )}
+                  {order.invoiceAddress && (
+                    <>
+                      <br />
+                      Fatura adresi: {order.invoiceAddress}
+                    </>
+                  )}
+                </p>
               </div>
             </div>
 

@@ -10,6 +10,8 @@ import {
 import {
   IsArray,
   IsEmail,
+  IsIn,
+  Matches,
   IsEnum,
   IsInt,
   IsNumber,
@@ -110,6 +112,39 @@ class CreateOrderDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  /* Fatura bilgileri */
+  @IsOptional()
+  @IsIn(['INDIVIDUAL', 'CORPORATE'])
+  invoiceType?: 'INDIVIDUAL' | 'CORPORATE';
+
+  @IsOptional()
+  @Matches(/^\d{11}$/, { message: 'TC kimlik numarası 11 haneli olmalıdır.' })
+  invoiceTckn?: string;
+
+  @IsOptional()
+  @IsString()
+  invoiceCompanyName?: string;
+
+  @IsOptional()
+  @Matches(/^\d{10}$/, { message: 'Vergi numarası 10 haneli olmalıdır.' })
+  invoiceTaxNo?: string;
+
+  @IsOptional()
+  @IsString()
+  invoiceTaxOffice?: string;
+
+  @IsOptional()
+  @IsString()
+  invoiceAddress?: string;
+}
+
+class CancelOrderDto {
+  @IsString()
+  orderNo: string;
+
+  @IsEmail()
+  email: string;
 }
 
 @Controller('orders')
@@ -156,5 +191,20 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard)
   mine(@CurrentUser() user: AuthUser) {
     return this.service.listForUser(user!.id);
+  }
+
+  /** Kargoya verilmemis siparisin musteri tarafindan iptali. */
+  @Post('cancel')
+  @UseGuards(OptionalJwtAuthGuard)
+  async cancel(@Body() dto: CancelOrderDto, @CurrentUser() user: AuthUser | null) {
+    const order = await this.service.cancelByCustomer(dto.orderNo, dto.email);
+    this.logs.record({
+      userId: user?.id ?? null,
+      email: order.email,
+      actorType: user ? 'CUSTOMER' : 'GUEST',
+      action: 'order.cancel',
+      detail: `${order.orderNo} müşteri tarafından iptal edildi`,
+    });
+    return { ok: true, orderNo: order.orderNo, status: order.status };
   }
 }

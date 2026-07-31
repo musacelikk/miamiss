@@ -18,3 +18,4 @@ export * from './stock-alert.entity';
 export * from './activity-log.entity';
 export * from './blog-post.entity';
 export * from './support.entity';
+export * from './marketing-template.entity';

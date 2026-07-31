@@ -88,6 +88,25 @@ export class Order {
   @Column({ type: 'varchar', nullable: true })
   shippingZip: string | null;
 
+  /* Fatura bilgileri (bos ise bireysel + teslimat adresi kullanilir) */
+  @Column({ type: 'varchar', default: 'INDIVIDUAL' })
+  invoiceType: string; // INDIVIDUAL | CORPORATE
+
+  @Column({ type: 'varchar', nullable: true })
+  invoiceTckn: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  invoiceCompanyName: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  invoiceTaxNo: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  invoiceTaxOffice: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  invoiceAddress: string | null;
+
   @Column({ type: 'text', nullable: true })
   note: string | null;
 

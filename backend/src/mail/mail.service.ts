@@ -172,6 +172,24 @@ export class MailService {
     );
   }
 
+  /**
+   * Kampanya e-postasi: sablon HTML'i oldugu gibi gonderilir ({{name}}
+   * alici adiyla degistirilir), marka sablonuna sarilmaz.
+   */
+  sendMarketing(to: string, subject: string, html: string, recipientName: string): void {
+    const personalized = html.replace(/\{\{\s*name\s*\}\}/g, recipientName);
+    if (!this.transporter) {
+      this.logger.log(`[MAIL SKIP] to=${to} subject="${subject}" (kampanya)`);
+      return;
+    }
+    this.transporter
+      .sendMail({ from: this.from, to, subject, html: personalized })
+      .then(() => this.logger.log(`[MAIL OK] to=${to} subject="${subject}" (kampanya)`))
+      .catch((err: Error) =>
+        this.logger.error(`[MAIL FAIL] to=${to}: ${err.message}`),
+      );
+  }
+
   /** Destek kutusuna dusen yeni mesaji isletmeciye haber verir. */
   supportNotifyAdmin(ticket: {
     ticketNo: string;

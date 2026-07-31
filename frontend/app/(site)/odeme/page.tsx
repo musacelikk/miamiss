@@ -16,7 +16,15 @@ import { toast } from "sonner"
 import { useAuth, useCart } from "@/components/providers"
 import { api, type Address, type StoreSettings } from "@/lib/api"
 import { formatPrice } from "@/lib/format"
-import { isValidPhone, phoneInputProps, sanitizeName, sanitizePhone, sanitizeZip } from "@/lib/input"
+import {
+  isValidPhone,
+  phoneInputProps,
+  sanitizeName,
+  sanitizePhone,
+  sanitizeTaxNo,
+  sanitizeTckn,
+  sanitizeZip,
+} from "@/lib/input"
 import { cn } from "@/lib/utils"
 
 type PayMethod = "BANK_TRANSFER" | "COD" | "CARD"
@@ -41,6 +49,15 @@ export default function CheckoutPage() {
     note: "",
   })
   const [payMethod, setPayMethod] = useState<PayMethod>("BANK_TRANSFER")
+  const [invoice, setInvoice] = useState({
+    type: "INDIVIDUAL" as "INDIVIDUAL" | "CORPORATE",
+    tckn: "",
+    companyName: "",
+    taxNo: "",
+    taxOffice: "",
+    differentAddress: false,
+    address: "",
+  })
 
   const [couponInput, setCouponInput] = useState("")
   const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null)
@@ -143,6 +160,20 @@ export default function CheckoutPage() {
       toast.error("Geçerli bir telefon numarası girin (05xx xxx xx xx).")
       return
     }
+    if (invoice.type === "INDIVIDUAL" && invoice.tckn && invoice.tckn.length !== 11) {
+      toast.error("TC kimlik numarası 11 haneli olmalıdır.")
+      return
+    }
+    if (invoice.type === "CORPORATE") {
+      if (!invoice.companyName.trim()) {
+        toast.error("Kurumsal fatura için firma unvanı gereklidir.")
+        return
+      }
+      if (invoice.taxNo.length !== 10) {
+        toast.error("Vergi numarası 10 haneli olmalıdır.")
+        return
+      }
+    }
     setBusy(true)
     try {
       const res = await api<{
@@ -168,6 +199,20 @@ export default function CheckoutPage() {
           couponCode: coupon?.code,
           giftCardCode: giftCard?.code,
           paymentMethod: payMethod,
+          invoiceType: invoice.type,
+          invoiceTckn:
+            invoice.type === "INDIVIDUAL" && invoice.tckn ? invoice.tckn : undefined,
+          invoiceCompanyName:
+            invoice.type === "CORPORATE" ? invoice.companyName.trim() : undefined,
+          invoiceTaxNo: invoice.type === "CORPORATE" ? invoice.taxNo : undefined,
+          invoiceTaxOffice:
+            invoice.type === "CORPORATE" && invoice.taxOffice.trim()
+              ? invoice.taxOffice.trim()
+              : undefined,
+          invoiceAddress:
+            invoice.differentAddress && invoice.address.trim()
+              ? invoice.address.trim()
+              : undefined,
         }),
       })
       completedRef.current = true
@@ -312,6 +357,107 @@ export default function CheckoutPage() {
                   placeholder="İsteğe bağlı"
                 />
               </div>
+            </div>
+          </section>
+
+          {/* Fatura bilgileri */}
+          <section className="rounded-md border border-border bg-card p-6">
+            <h2 className="font-display text-2xl">Fatura Bilgileri</h2>
+            <div className="mt-4 flex gap-2">
+              {(
+                [
+                  ["INDIVIDUAL", "Bireysel"],
+                  ["CORPORATE", "Kurumsal"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  type="button"
+                  key={value}
+                  onClick={() => setInvoice({ ...invoice, type: value })}
+                  className={cn(
+                    "rounded-full border px-5 py-2 text-xs font-semibold transition-colors",
+                    invoice.type === value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border hover:border-accent",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {invoice.type === "INDIVIDUAL" ? (
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold">
+                    TC Kimlik No (e-fatura için, isteğe bağlı)
+                  </label>
+                  <input
+                    inputMode="numeric"
+                    maxLength={11}
+                    value={invoice.tckn}
+                    onChange={(e) =>
+                      setInvoice({ ...invoice, tckn: sanitizeTckn(e.target.value) })
+                    }
+                    className={input}
+                    placeholder="11 haneli"
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="sm:col-span-2">
+                    <label className="mb-1.5 block text-xs font-semibold">Firma Unvanı *</label>
+                    <input
+                      value={invoice.companyName}
+                      onChange={(e) => setInvoice({ ...invoice, companyName: e.target.value })}
+                      className={input}
+                      placeholder="Örnek Ltd. Şti."
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold">Vergi No *</label>
+                    <input
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={invoice.taxNo}
+                      onChange={(e) =>
+                        setInvoice({ ...invoice, taxNo: sanitizeTaxNo(e.target.value) })
+                      }
+                      className={input}
+                      placeholder="10 haneli"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold">Vergi Dairesi</label>
+                    <input
+                      value={invoice.taxOffice}
+                      onChange={(e) => setInvoice({ ...invoice, taxOffice: e.target.value })}
+                      className={input}
+                    />
+                  </div>
+                </>
+              )}
+              <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={invoice.differentAddress}
+                  onChange={(e) =>
+                    setInvoice({ ...invoice, differentAddress: e.target.checked })
+                  }
+                />
+                Fatura adresim teslimat adresimden farklı
+              </label>
+              {invoice.differentAddress && (
+                <div className="sm:col-span-2">
+                  <label className="mb-1.5 block text-xs font-semibold">Fatura Adresi</label>
+                  <textarea
+                    rows={2}
+                    value={invoice.address}
+                    onChange={(e) => setInvoice({ ...invoice, address: e.target.value })}
+                    className={input}
+                  />
+                </div>
+              )}
             </div>
           </section>
 
