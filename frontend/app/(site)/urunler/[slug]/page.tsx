@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
+import { API_URL } from "@/lib/api"
 import { ProductDetailClient } from "./product-detail-client"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api"
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
 
 interface ApiProduct {

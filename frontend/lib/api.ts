@@ -1,5 +1,16 @@
+/**
+ * Backend tum endpoint'leri "/api" onekiyle sunar. Env degiskeni onek ile de
+ * onek olmadan da girilebilsin diye burada normalize ediliyor.
+ */
+function normalizeApiUrl(base: string): string {
+  const trimmed = base.replace(/\/+$/, "")
+  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`
+}
+
 function resolveApiUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL)
+  }
   // Env verilmemisse: canli domainde api subdomain'i, gelistirmede localhost
   if (typeof window !== "undefined" && window.location.hostname.endsWith("miamisuhome.com")) {
     return "https://api.miamisuhome.com/api"
