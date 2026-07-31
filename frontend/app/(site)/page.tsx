@@ -14,6 +14,7 @@ import {
 import { ProductCard, ProductCardSkeleton } from "@/components/site/product-card"
 import { WordPuzzle } from "@/components/site/word-puzzle"
 import { RecentlyViewed } from "@/components/site/recently-viewed"
+import { HeroGallery } from "@/components/site/hero-gallery"
 import { Brand } from "@/components/brand"
 
 const FALLBACK_CATEGORY_IMAGES: Record<string, string> = {
@@ -49,16 +50,50 @@ export default function HomePage() {
     <>
       {/* ===== Hero ===== */}
       <section className="relative overflow-hidden">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-16 lg:pb-24 lg:pt-20">
+        {/* Mobil: tam genişlikte kaydırmalı galeri, metin altında */}
+        <div className="lg:hidden">
+          <HeroGallery images={heroImages} badge={hp.heroBadge} />
+          <div className="px-4 pb-12 pt-6 sm:px-6">
+            <p className="eyebrow mb-3">{hp.heroEyebrow}</p>
+            <h1 className="font-display text-[2.65rem] leading-[1.06] sm:text-5xl">
+              {hp.heroTitle}{" "}
+              <span className="italic text-accent">{hp.heroTitleAccent}</span>
+              {hp.heroTitleSuffix}
+            </h1>
+            <p className="mt-4 text-[0.95rem] leading-relaxed text-muted-foreground">
+              {hp.heroSubtitle}
+            </p>
+            <div className="mt-7 flex flex-col gap-3">
+              <Link
+                href={hp.heroPrimaryUrl || "/urunler"}
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold tracking-wide text-primary-foreground"
+              >
+                {hp.heroPrimaryText}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              {hp.heroSecondaryText && (
+                <Link
+                  href={hp.heroSecondaryUrl || "/hediye-karti"}
+                  className="inline-flex h-12 items-center justify-center rounded-md border border-foreground/20 text-sm font-semibold tracking-wide"
+                >
+                  {hp.heroSecondaryText}
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Masaüstü: metin + görsel kolajı */}
+        <div className="mx-auto hidden max-w-7xl gap-16 px-6 pb-24 pt-20 lg:grid lg:grid-cols-2 lg:items-center">
           <div className="max-w-xl">
             <p className="eyebrow mb-5">{hp.heroEyebrow}</p>
-            <h1 className="font-display text-5xl leading-[1.05] sm:text-6xl lg:text-7xl">
+            <h1 className="font-display text-6xl leading-[1.05] lg:text-7xl">
               {hp.heroTitle}
               <br />
               <span className="italic text-accent">{hp.heroTitleAccent}</span>
               {hp.heroTitleSuffix}
             </h1>
-            <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className="mt-6 max-w-md text-lg leading-relaxed text-muted-foreground">
               {hp.heroSubtitle}
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-4">
@@ -120,7 +155,7 @@ export default function HomePage() {
               </div>
             </div>
             {hp.heroBadge && (
-              <div className="absolute -left-6 top-1/2 hidden h-28 w-28 -translate-y-1/2 items-center justify-center rounded-full border border-accent/40 bg-background/90 text-center backdrop-blur lg:flex">
+              <div className="absolute -left-6 top-1/2 flex h-28 w-28 -translate-y-1/2 items-center justify-center rounded-full border border-accent/40 bg-background/90 text-center backdrop-blur">
                 <p className="whitespace-pre-line font-display text-sm italic leading-tight text-accent">
                   {hp.heroBadge.split(" ").join("\n")}
                 </p>
@@ -132,15 +167,17 @@ export default function HomePage() {
 
       {/* ===== Değerler bandı ===== */}
       <section className="border-y border-border bg-card">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-4">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-4 gap-y-6 px-4 py-7 sm:px-6 sm:gap-6 lg:grid-cols-4 lg:py-8">
           {hp.values.slice(0, 4).map((v, i) => {
             const Icon = VALUE_ICONS[i % VALUE_ICONS.length]
             return (
-              <div key={i} className="flex items-center gap-4">
-                <Icon className="h-6 w-6 shrink-0 text-accent" strokeWidth={1.5} />
-                <div>
-                  <p className="text-sm font-semibold">{v.title}</p>
-                  <p className="text-xs text-muted-foreground">{v.desc}</p>
+              <div key={i} className="flex items-start gap-3 sm:items-center sm:gap-4">
+                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-accent sm:mt-0 sm:h-6 sm:w-6" strokeWidth={1.5} />
+                <div className="min-w-0">
+                  <p className="text-[0.8rem] font-semibold leading-snug sm:text-sm">{v.title}</p>
+                  <p className="text-[0.7rem] leading-snug text-muted-foreground sm:text-xs">
+                    {v.desc}
+                  </p>
                 </div>
               </div>
             )
@@ -150,25 +187,26 @@ export default function HomePage() {
 
       {/* ===== Kategoriler ===== */}
       {categories.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
-          <div className="mb-10 flex items-end justify-between">
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:py-24">
+          <div className="mb-6 flex items-end justify-between sm:mb-10">
             <div>
-              <p className="eyebrow mb-3">{hp.categoriesEyebrow}</p>
-              <h2 className="font-display text-3xl sm:text-4xl">{hp.categoriesTitle}</h2>
+              <p className="eyebrow mb-2 sm:mb-3">{hp.categoriesEyebrow}</p>
+              <h2 className="font-display text-[1.75rem] sm:text-4xl">{hp.categoriesTitle}</h2>
             </div>
             <Link
               href="/urunler"
-              className="hidden items-center gap-1 text-sm font-medium text-accent hover:underline sm:flex"
+              className="flex shrink-0 items-center gap-1 pb-1 text-xs font-medium text-accent hover:underline sm:text-sm"
             >
               Tümünü Gör <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {/* Mobilde yatay kaydırma, tablet+ grid */}
+          <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:px-0 lg:grid-cols-5 [&::-webkit-scrollbar]:hidden">
             {categories.map((cat) => (
               <Link
                 key={cat.id}
                 href={`/urunler?category=${cat.slug}`}
-                className="group relative overflow-hidden rounded-md"
+                className="group relative w-[44%] shrink-0 snap-start overflow-hidden rounded-md sm:w-auto"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -177,9 +215,10 @@ export default function HomePage() {
                   )}
                   alt={cat.name}
                   className="aspect-[3/4] w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/10 to-transparent" />
-                <p className="absolute bottom-4 left-4 right-4 font-display text-lg text-background">
+                <p className="absolute bottom-3 left-3 right-3 font-display text-base text-background sm:bottom-4 sm:left-4 sm:right-4 sm:text-lg">
                   {cat.name}
                 </p>
               </Link>
@@ -190,11 +229,11 @@ export default function HomePage() {
 
       {/* ===== Öne çıkanlar ===== */}
       <section className="bg-card">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
-          <div className="mb-10 flex items-end justify-between">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:py-24">
+          <div className="mb-6 flex items-end justify-between sm:mb-10">
             <div>
-              <p className="eyebrow mb-3">{hp.featuredEyebrow}</p>
-              <h2 className="font-display text-3xl sm:text-4xl">{hp.featuredTitle}</h2>
+              <p className="eyebrow mb-2 sm:mb-3">{hp.featuredEyebrow}</p>
+              <h2 className="font-display text-[1.75rem] sm:text-4xl">{hp.featuredTitle}</h2>
             </div>
             <Link
               href="/urunler"
@@ -203,15 +242,15 @@ export default function HomePage() {
               Tüm Koleksiyon <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4">
             {featured === null
               ? Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)
               : featured.slice(0, 8).map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
-          <div className="mt-10 text-center sm:hidden">
+          <div className="mt-8 sm:hidden">
             <Link
               href="/urunler"
-              className="inline-flex h-11 items-center rounded-md border border-foreground/20 px-8 text-sm font-semibold"
+              className="flex h-12 items-center justify-center rounded-md border border-foreground/20 text-sm font-semibold"
             >
               Tüm Koleksiyon
             </Link>
@@ -226,39 +265,41 @@ export default function HomePage() {
       <WordPuzzle />
 
       {/* ===== Hediye kartı ===== */}
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
-        <div className="grid items-center gap-10 overflow-hidden rounded-lg border border-border bg-gradient-to-br from-secondary via-card to-secondary/50 lg:grid-cols-2">
-          <div className="p-8 sm:p-12 lg:p-16">
-            <p className="eyebrow mb-4">{hp.giftEyebrow}</p>
-            <h2 className="font-display text-3xl leading-tight sm:text-4xl">
-              {hp.giftTitle}
-              <br />
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:py-24">
+        <div className="grid items-center gap-0 overflow-hidden rounded-lg border border-border bg-gradient-to-br from-secondary via-card to-secondary/50 lg:grid-cols-2 lg:gap-10">
+          <div className="p-6 sm:p-12 lg:p-16">
+            <p className="eyebrow mb-3 sm:mb-4">{hp.giftEyebrow}</p>
+            <h2 className="font-display text-[1.75rem] leading-tight sm:text-4xl">
+              {hp.giftTitle}{" "}
               <span className="italic text-accent">{hp.giftTitleAccent}</span>
             </h2>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:mt-4 sm:text-base">
               {hp.giftText}
             </p>
             <Link
               href="/hediye-karti"
-              className="group mt-8 inline-flex h-12 items-center gap-2 rounded-md bg-primary px-8 text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent"
+              className="group mt-6 flex h-12 items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent sm:mt-8 sm:inline-flex sm:px-8"
             >
               {hp.giftButtonText}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
-          <div className="relative hidden h-full min-h-[320px] lg:block">
-            <div className="absolute inset-0 flex items-center justify-center p-10">
-              <div className="relative aspect-[8/5] w-full max-w-sm rotate-3 rounded-xl bg-primary p-6 text-primary-foreground shadow-2xl transition-transform duration-500 hover:rotate-0">
-                <p className="text-2xl text-accent">
+          {/* Kart görseli: mobilde de görünür */}
+          <div className="relative h-full min-h-[200px] px-6 pb-8 sm:min-h-[260px] lg:min-h-[320px] lg:px-0 lg:pb-0">
+            <div className="flex h-full items-center justify-center lg:absolute lg:inset-0 lg:p-10">
+              <div className="relative aspect-[8/5] w-full max-w-sm rotate-3 rounded-xl bg-primary p-5 text-primary-foreground shadow-2xl transition-transform duration-500 hover:rotate-0 sm:p-6">
+                <p className="text-xl text-accent sm:text-2xl">
                   <Brand />
                 </p>
-                <p className="mt-1 text-[10px] uppercase tracking-[0.3em] text-primary-foreground/60">
+                <p className="mt-1 text-[9px] uppercase tracking-[0.3em] text-primary-foreground/60 sm:text-[10px]">
                   Hediye Kartı
                 </p>
-                <p className="absolute bottom-6 left-6 font-mono text-sm tracking-[0.2em] text-primary-foreground/80">
+                <p className="absolute bottom-5 left-5 font-mono text-xs tracking-[0.2em] text-primary-foreground/80 sm:bottom-6 sm:left-6 sm:text-sm">
                   GIFT-••••-••••
                 </p>
-                <p className="absolute bottom-6 right-6 font-display text-2xl text-accent">₺</p>
+                <p className="absolute bottom-4 right-5 font-display text-2xl text-accent sm:bottom-6 sm:right-6">
+                  ₺
+                </p>
               </div>
             </div>
           </div>
@@ -267,17 +308,17 @@ export default function HomePage() {
 
       {/* ===== Marka hikayesi ===== */}
       <section className="border-t border-border bg-card">
-        <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 lg:py-24">
-          <p className="eyebrow mb-4">{hp.storyEyebrow}</p>
-          <h2 className="font-display text-3xl leading-snug sm:text-4xl lg:text-[2.75rem]">
+        <div className="mx-auto max-w-4xl px-4 py-12 text-center sm:px-6 sm:py-16 lg:py-24">
+          <p className="eyebrow mb-3 sm:mb-4">{hp.storyEyebrow}</p>
+          <h2 className="font-display text-2xl leading-snug sm:text-4xl lg:text-[2.75rem]">
             {hp.storyQuote}
           </h2>
-          <p className="mx-auto mt-6 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:mt-6 sm:text-base">
             {hp.storyText}
           </p>
           <Link
             href="/hakkimizda"
-            className="mt-8 inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline"
+            className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline sm:mt-8"
           >
             Hikâyemizi Okuyun <ArrowRight className="h-4 w-4" />
           </Link>

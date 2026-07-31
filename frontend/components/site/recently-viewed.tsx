@@ -58,17 +58,17 @@ export function RecentlyViewed({
   if (items.length === 0) return null
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-      <div className="mb-6 flex items-center gap-2">
+    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
+      <div className="mb-4 flex items-center gap-2 sm:mb-6">
         <History className="h-4 w-4 text-accent" />
-        <h2 className="font-display text-2xl">{title}</h2>
+        <h2 className="font-display text-xl sm:text-2xl">{title}</h2>
       </div>
-      <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:thin]">
+      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:gap-4 sm:px-0 [&::-webkit-scrollbar]:hidden">
         {items.map((item) => (
           <Link
             key={item.id}
             href={`/urunler/${item.slug}`}
-            className="group w-36 shrink-0 sm:w-44"
+            className="group w-32 shrink-0 snap-start sm:w-44"
           >
             <div className="overflow-hidden rounded-md bg-muted">
               {/* eslint-disable-next-line @next/next/no-img-element */}

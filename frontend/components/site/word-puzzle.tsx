@@ -76,12 +76,12 @@ export function WordPuzzle() {
 
   return (
     <section className="bg-primary text-primary-foreground">
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:py-24">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="eyebrow mb-4 flex items-center justify-center gap-2">
+          <p className="eyebrow mb-3 flex items-center justify-center gap-2 sm:mb-4">
             <Sparkles className="h-3.5 w-3.5" /> Kelime Oyunu
           </p>
-          <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl">
+          <h2 className="font-display text-[1.75rem] leading-tight sm:text-4xl lg:text-5xl">
             Kelimeyi Bul, <span className="italic text-accent">%10 İndirim</span> Kazan
           </h2>
 
@@ -106,12 +106,12 @@ export function WordPuzzle() {
               </p>
 
               {/* Cevap kutuları */}
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+              <div className="mt-7 flex flex-wrap items-center justify-center gap-1.5 sm:mt-8 sm:gap-2">
                 {Array.from({ length: puzzle.length ?? 0 }).map((_, i) => (
                   <div
                     key={i}
                     className={cn(
-                      "flex h-12 w-10 items-center justify-center rounded-md border text-xl font-bold sm:h-14 sm:w-12",
+                      "flex h-11 w-8 items-center justify-center rounded-md border text-lg font-bold sm:h-14 sm:w-12 sm:text-xl",
                       picked[i] != null
                         ? "border-accent bg-accent/15 text-accent"
                         : "border-primary-foreground/20 bg-primary-foreground/5",
@@ -123,7 +123,7 @@ export function WordPuzzle() {
               </div>
 
               {/* Harfler */}
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-1.5 sm:mt-6 sm:gap-2">
                 {puzzle.letters.map((letter, i) => {
                   const used = picked.includes(i)
                   return (
@@ -132,7 +132,7 @@ export function WordPuzzle() {
                       disabled={used || picked.length >= (puzzle.length ?? 0)}
                       onClick={() => setPicked((p) => [...p, i])}
                       className={cn(
-                        "h-11 w-11 rounded-md border text-lg font-semibold transition-all sm:h-12 sm:w-12",
+                        "h-11 w-10 rounded-md border text-lg font-semibold transition-all sm:h-12 sm:w-12",
                         used
                           ? "border-primary-foreground/10 bg-transparent text-primary-foreground/20"
                           : "border-primary-foreground/25 bg-primary-foreground/10 hover:border-accent hover:text-accent active:scale-95",
@@ -144,24 +144,24 @@ export function WordPuzzle() {
                 })}
               </div>
 
-              <div className="mt-8 flex items-center justify-center gap-3">
+              <div className="mt-7 flex items-center justify-center gap-2 sm:mt-8 sm:gap-3">
                 <button
                   onClick={() => setPicked((p) => p.slice(0, -1))}
                   disabled={!picked.length}
-                  className="flex h-11 items-center gap-2 rounded-md border border-primary-foreground/25 px-4 text-sm transition-colors hover:border-primary-foreground/50 disabled:opacity-40"
+                  className="flex h-11 shrink-0 items-center gap-2 rounded-md border border-primary-foreground/25 px-3.5 text-sm transition-colors hover:border-primary-foreground/50 disabled:opacity-40 sm:px-4"
                 >
                   <Delete className="h-4 w-4" /> Sil
                 </button>
                 <button
                   onClick={submit}
                   disabled={picked.length !== (puzzle.length ?? 0) || busy}
-                  className="flex h-11 items-center gap-2 rounded-md bg-accent px-8 text-sm font-semibold text-accent-foreground transition-all hover:brightness-110 disabled:opacity-40"
+                  className="flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-accent text-sm font-semibold text-accent-foreground transition-all hover:brightness-110 disabled:opacity-40 sm:flex-none sm:px-8"
                 >
                   {busy ? "Kontrol ediliyor..." : "Kontrol Et"}
                 </button>
                 <button
                   onClick={load}
-                  className="flex h-11 w-11 items-center justify-center rounded-md border border-primary-foreground/25 transition-colors hover:border-primary-foreground/50"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-primary-foreground/25 transition-colors hover:border-primary-foreground/50"
                   aria-label="Yeni kelime"
                 >
                   <RotateCcw className="h-4 w-4" />
