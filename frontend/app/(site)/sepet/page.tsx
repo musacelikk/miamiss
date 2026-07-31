@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { ArrowRight, Gift, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { useEffect, useState } from "react"
 import { useCart } from "@/components/providers"
 import { api, imageUrl, type StoreSettings } from "@/lib/api"
@@ -10,6 +11,27 @@ import { formatPrice } from "@/lib/format"
 export default function CartPage() {
   const { items, giftCards, subtotal, updateQuantity, removeProduct, removeGiftCard } = useCart()
   const [settings, setSettings] = useState<StoreSettings | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  const allKeys = [...items.map((i) => i.key), ...giftCards.map((g) => `gc:${g.key}`)]
+  const toggle = (key: string, checked: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(key)
+      else next.delete(key)
+      return next
+    })
+
+  const removeSelected = () => {
+    let n = 0
+    for (const key of selected) {
+      if (key.startsWith("gc:")) removeGiftCard(key.slice(3))
+      else removeProduct(key)
+      n++
+    }
+    setSelected(new Set())
+    toast.success(`${n} ürün sepetten kaldırıldı`)
+  }
 
   useEffect(() => {
     api<StoreSettings>("/settings", { auth: false })
@@ -44,6 +66,38 @@ export default function CartPage() {
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_380px]">
         <div className="space-y-4">
+          {/* Çoklu seçim çubuğu */}
+          <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-4 py-2.5">
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold">
+              <input
+                type="checkbox"
+                checked={selected.size === allKeys.length && allKeys.length > 0}
+                onChange={(e) => setSelected(e.target.checked ? new Set(allKeys) : new Set())}
+                className="h-4 w-4 accent-[oklch(0.63_0.065_75)]"
+              />
+              Tümünü Seç
+            </label>
+            {selected.size > 0 && (
+              <>
+                <span className="rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold text-accent-foreground">
+                  {selected.size} seçili
+                </span>
+                <button
+                  onClick={removeSelected}
+                  className="flex items-center gap-1.5 rounded-md border border-destructive/40 px-4 py-1.5 text-xs font-semibold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <Trash2 className="h-3 w-3" /> Seçilenleri Kaldır
+                </button>
+                <button
+                  onClick={() => setSelected(new Set())}
+                  className="ml-auto text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  Temizle
+                </button>
+              </>
+            )}
+          </div>
+
           {/* Ücretsiz kargo çubuğu */}
           {settings && items.length > 0 && (
             <div className="rounded-md border border-border bg-card p-4">
@@ -72,8 +126,20 @@ export default function CartPage() {
           {items.map((item) => (
             <div
               key={item.key}
-              className="flex gap-4 rounded-md border border-border bg-card p-4"
+              className={
+                "flex gap-3 rounded-md border bg-card p-4 " +
+                (selected.has(item.key) ? "border-accent" : "border-border")
+              }
             >
+              <label className="flex shrink-0 cursor-pointer items-start pt-1">
+                <input
+                  type="checkbox"
+                  checked={selected.has(item.key)}
+                  onChange={(e) => toggle(item.key, e.target.checked)}
+                  className="h-4 w-4 accent-[oklch(0.63_0.065_75)]"
+                  aria-label={`${item.name} seç`}
+                />
+              </label>
               <Link href={`/urunler/${item.slug}`} className="shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -130,8 +196,20 @@ export default function CartPage() {
           {giftCards.map((gc) => (
             <div
               key={gc.key}
-              className="flex items-center gap-4 rounded-md border border-accent/40 bg-secondary/50 p-4"
+              className={
+                "flex items-center gap-3 rounded-md border bg-secondary/50 p-4 " +
+                (selected.has(`gc:${gc.key}`) ? "border-accent" : "border-accent/40")
+              }
             >
+              <label className="flex shrink-0 cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={selected.has(`gc:${gc.key}`)}
+                  onChange={(e) => toggle(`gc:${gc.key}`, e.target.checked)}
+                  className="h-4 w-4 accent-[oklch(0.63_0.065_75)]"
+                  aria-label="Hediye kartını seç"
+                />
+              </label>
               <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-md bg-primary sm:h-28 sm:w-28">
                 <Gift className="h-8 w-8 text-accent" />
               </div>

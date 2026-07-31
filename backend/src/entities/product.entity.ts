@@ -24,6 +24,10 @@ export class Product {
   @Column({ unique: true })
   slug: string;
 
+  /** Stok kodu (SKU) — bos birakilirsa otomatik uretilir, tum urun/varyantlarda benzersizdir */
+  @Column({ type: 'varchar', nullable: true })
+  sku: string | null;
+
   @Column({ type: 'text', default: '' })
   description: string;
 

@@ -254,7 +254,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             slug: product.slug,
             name: product.name,
             price,
-            image: product.images?.[0]?.url ?? null,
+            image: variant?.image ?? product.images?.[0]?.url ?? null,
             quantity: Math.min(quantity, stock),
             stock,
           },

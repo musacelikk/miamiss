@@ -151,7 +151,7 @@ export class OrdersService {
           variantId: variant?.id ?? null,
           variantName: variant?.name ?? null,
           name: product.name,
-          imageUrl: product.images?.[0]?.url ?? null,
+          imageUrl: variant?.image ?? product.images?.[0]?.url ?? null,
           categorySlug: product.category?.slug ?? null,
           unitPrice,
           quantity: qty,

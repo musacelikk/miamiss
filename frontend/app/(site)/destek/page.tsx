@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Suspense, useCallback, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { Headset, Loader2, MessageSquarePlus, Search, Send } from "lucide-react"
+import { Headset, Loader2, MessageSquarePlus, RefreshCw, Search, Send } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
 import { formatDate } from "@/lib/format"
@@ -33,14 +33,18 @@ function SupportContent() {
   const [trackEmail, setTrackEmail] = useState("")
   const [guestTicket, setGuestTicket] = useState<SupportTicket | null>(null)
 
+  const [refreshing, setRefreshing] = useState(false)
+
   const loadMine = useCallback(() => {
     if (!user) {
       setTickets([])
       return
     }
+    setRefreshing(true)
     api<SupportTicket[]>("/support/mine")
       .then(setTickets)
       .catch(() => setTickets([]))
+      .finally(() => setRefreshing(false))
   }, [user])
 
   useEffect(() => {
@@ -99,8 +103,7 @@ function SupportContent() {
     }
   }
 
-  const trackGuest = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const trackGuest = async () => {
     try {
       const res = await api<SupportTicket>(
         `/support/track?ticketNo=${encodeURIComponent(trackNo)}&email=${encodeURIComponent(trackEmail)}`,
@@ -216,7 +219,18 @@ function SupportContent() {
       {/* Üye talepleri */}
       {user ? (
         <div className="mt-10">
-          <h2 className="font-display text-2xl">Taleplerim</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-2xl">Taleplerim</h2>
+            <button
+              onClick={loadMine}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 rounded-md border border-border px-3.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
+              aria-label="Yanıtları yenile"
+            >
+              <RefreshCw className={refreshing ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
+              Yenile
+            </button>
+          </div>
           {tickets === null ? (
             <div className="flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-accent" />
@@ -292,7 +306,13 @@ function SupportContent() {
             </Link>{" "}
             tüm talepleriniz burada listelenir.
           </p>
-          <form onSubmit={trackGuest} className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void trackGuest()
+            }}
+            className="mt-4 flex flex-col gap-2 sm:flex-row"
+          >
             <input
               required
               value={trackNo}
@@ -315,8 +335,15 @@ function SupportContent() {
 
           {guestTicket && (
             <div className="mt-6 border-t border-border pt-5">
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="font-semibold">{guestTicket.subject}</p>
+                <button
+                  onClick={() => void trackGuest()}
+                  className="ml-auto flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground hover:border-accent hover:text-accent"
+                  aria-label="Yenile"
+                >
+                  <RefreshCw className="h-3 w-3" /> Yenile
+                </button>
                 <span
                   className={cn(
                     "rounded-full px-2.5 py-1 text-[11px] font-semibold",

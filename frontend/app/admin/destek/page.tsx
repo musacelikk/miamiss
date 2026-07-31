@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { ChevronDown, Loader2, Send } from "lucide-react"
+import { ChevronDown, Loader2, RefreshCw, Send } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
@@ -146,12 +146,15 @@ function TicketRow({ ticket, onChanged }: { ticket: SupportTicket; onChanged: ()
 export default function AdminSupportPage() {
   const [data, setData] = useState<{ items: SupportTicket[]; unread: number } | null>(null)
   const [status, setStatus] = useState("")
+  const [refreshing, setRefreshing] = useState(false)
 
   const load = useCallback(() => {
     const q = status ? `?status=${status}` : ""
+    setRefreshing(true)
     api<{ items: SupportTicket[]; unread: number }>(`/admin/support${q}`)
       .then(setData)
       .catch((e) => toast.error(e.message))
+      .finally(() => setRefreshing(false))
   }, [status])
 
   useEffect(() => {
@@ -182,11 +185,22 @@ export default function AdminSupportPage() {
             {TICKET_STATUS_TR[s]}
           </button>
         ))}
-        {data && data.unread > 0 && (
-          <span className="ml-auto rounded-full bg-accent px-3 py-1 text-xs font-bold text-accent-foreground">
-            {data.unread} okunmamış
-          </span>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {data && data.unread > 0 && (
+            <span className="rounded-full bg-accent px-3 py-1 text-xs font-bold text-accent-foreground">
+              {data.unread} okunmamış
+            </span>
+          )}
+          <button
+            onClick={load}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 rounded-md border border-border px-3.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
+            aria-label="Talepleri yenile"
+          >
+            <RefreshCw className={refreshing ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
+            Yenile
+          </button>
+        </div>
       </div>
 
       {data === null ? (

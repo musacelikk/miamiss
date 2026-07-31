@@ -115,6 +115,9 @@ export function ProductDetailClient({ slug }: { slug: string }) {
   const [product, setProduct] = useState<ProductDetail | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [activeImage, setActiveImage] = useState(0)
+  // Varyant secilince (gorseli varsa) galeriyi gecici olarak o gorsele cevirir;
+  // kullanici bir kucuk resme tiklarsa normal galeriye doner
+  const [variantImageOverride, setVariantImageOverride] = useState<string | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [variant, setVariant] = useState<ProductVariant | null>(null)
   const [tab, setTab] = useState<"desc" | "detail" | "care" | "shipping">("desc")
@@ -228,7 +231,7 @@ export function ProductDetailClient({ slug }: { slug: string }) {
         <div>
           <div className="relative aspect-square overflow-hidden rounded-md bg-muted">
             <Image
-              src={imageUrl(images[activeImage]?.url)}
+              src={imageUrl(variantImageOverride ?? images[activeImage]?.url)}
               alt={product.name}
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"
@@ -246,7 +249,10 @@ export function ProductDetailClient({ slug }: { slug: string }) {
               {images.map((img, i) => (
                 <button
                   key={img.id}
-                  onClick={() => setActiveImage(i)}
+                  onClick={() => {
+                    setActiveImage(i)
+                    setVariantImageOverride(null)
+                  }}
                   className={cn(
                     "overflow-hidden rounded-md border-2 transition-colors",
                     i === activeImage ? "border-accent" : "border-transparent",
@@ -307,6 +313,7 @@ export function ProductDetailClient({ slug }: { slug: string }) {
                       onClick={() => {
                         setVariant(v)
                         setQuantity(1)
+                        setVariantImageOverride(v.image ?? null)
                       }}
                       disabled={soldOut}
                       className={cn(

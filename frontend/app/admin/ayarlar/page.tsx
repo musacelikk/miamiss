@@ -56,9 +56,15 @@ export default function AdminSettingsPage() {
       <div className="grid items-start gap-6 xl:grid-cols-2">
       <section className="rounded-md border border-border bg-card p-6">
         <h2 className="font-display text-xl">Kargo & Ödeme</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Buradaki tutarlar <strong className="text-foreground">müşteriden tahsil edilir</strong> —
+          sepette ve ödeme adımında görünen ücretlerdir.
+        </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div>
-            <label className="mb-1.5 block text-xs font-semibold">Kargo Ücreti (TL)</label>
+            <label className="mb-1.5 block text-xs font-semibold">
+              Müşteriden Alınan Kargo Ücreti (TL)
+            </label>
             <input
               type="number"
               step="0.01"
@@ -91,10 +97,18 @@ export default function AdminSettingsPage() {
       </section>
 
       <section className="rounded-md border border-border bg-card p-6">
-        <h2 className="font-display text-xl">Desi Tarifesi</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Ürün formunda ölçü/ağırlık girildiğinde tahmini kargo maliyeti bu tarifeden hesaplanır.
-          "Desi'ye kadar" değeri aşılmayan ilk satırın ücreti geçerlidir.
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="font-display text-xl">Desi Maliyet Tablosu</h2>
+          <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            Bilgi amaçlı — müşteriye yansımaz
+          </span>
+        </div>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Bu tablo yalnızca <strong className="text-foreground">senin kargo firmasına ödeyeceğin
+          maliyeti tahmin etmek</strong> için kullanılır: ürün formunda ölçü/ağırlık girince desi
+          hesaplanır ve tahmini maliyet burada yazdığın kademeden okunur. Müşterinin ödediği kargo
+          ücreti soldaki "Kargo & Ödeme" kartından belirlenir; bu tabloyu değiştirmek sepetteki
+          fiyatları etkilemez.
         </p>
         <div className="mt-4 space-y-2">
           {(settings.desiPrices ?? []).map((tier, i) => (

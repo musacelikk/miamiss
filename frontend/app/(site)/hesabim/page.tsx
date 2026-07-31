@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import {
+  Headset,
   Heart,
   Loader2,
   LogOut,
@@ -193,6 +194,12 @@ export default function AccountPage() {
           className="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-4 pb-3 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           <Heart className="h-4 w-4" /> Beğendiklerim
+        </Link>
+        <Link
+          href="/destek"
+          className="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-4 pb-3 text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
+          <Headset className="h-4 w-4" /> Canlı Destek
         </Link>
       </div>
 

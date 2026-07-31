@@ -95,6 +95,7 @@ export interface ProductVariant {
   compareAtPrice: number | null
   stock: number
   sku: string | null
+  image?: string | null
   sortOrder: number
   isActive: boolean
 }
@@ -207,6 +208,7 @@ export interface Product {
   id: string
   name: string
   slug: string
+  sku?: string | null
   description: string
   material: string | null
   dimensions: string | null

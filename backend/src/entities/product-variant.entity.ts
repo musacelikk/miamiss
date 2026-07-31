@@ -39,6 +39,10 @@ export class ProductVariant {
   @Column({ type: 'varchar', nullable: true })
   sku: string | null;
 
+  /** Varyanta ozel gorsel; bos ise urunun ana gorseli kullanilir */
+  @Column({ type: 'varchar', nullable: true })
+  image: string | null;
+
   @Column({ default: 0 })
   sortOrder: number;
 

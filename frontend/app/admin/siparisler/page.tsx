@@ -19,7 +19,17 @@ import { cn } from "@/lib/utils"
 const STATUSES = Object.keys(ORDER_STATUS_TR) as Order["status"][]
 const PAY_STATUSES = Object.keys(PAYMENT_STATUS_TR) as Order["paymentStatus"][]
 
-function OrderRow({ order, onChanged }: { order: Order; onChanged: () => void }) {
+function OrderRow({
+  order,
+  onChanged,
+  selected,
+  onSelect,
+}: {
+  order: Order
+  onChanged: () => void
+  selected: boolean
+  onSelect: (checked: boolean) => void
+}) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [tracking, setTracking] = useState(order.trackingNo ?? "")
@@ -39,10 +49,28 @@ function OrderRow({ order, onChanged }: { order: Order; onChanged: () => void })
   }
 
   return (
-    <div className="rounded-md border border-border bg-card">
+    <div
+      className={cn(
+        "rounded-md border bg-card",
+        selected ? "border-accent" : "border-border",
+      )}
+    >
+      <div className="flex items-center">
+        <label
+          className="flex shrink-0 cursor-pointer items-center self-stretch pl-4 pr-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(e) => onSelect(e.target.checked)}
+            className="h-4 w-4 accent-[oklch(0.63_0.065_75)]"
+            aria-label={`${order.orderNo} seç`}
+          />
+        </label>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full flex-wrap items-center justify-between gap-3 px-5 py-4 text-left"
+        className="flex w-full flex-wrap items-center justify-between gap-3 py-4 pl-1 pr-5 text-left"
       >
         <div>
           <p className="font-mono text-sm font-bold">{order.orderNo}</p>
@@ -71,6 +99,7 @@ function OrderRow({ order, onChanged }: { order: Order; onChanged: () => void })
           <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
         </div>
       </button>
+      </div>
 
       {open && (
         <div className="border-t border-border px-5 py-5">
@@ -338,6 +367,9 @@ function AdminOrdersContent() {
   const [status, setStatus] = useState<string>(params.get("status") ?? "")
   const [orders, setOrders] = useState<Order[] | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkStatus, setBulkStatus] = useState<Order["status"]>("CONFIRMED")
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const load = useCallback(() => {
     const q = status ? `?status=${status}` : ""
@@ -348,8 +380,63 @@ function AdminOrdersContent() {
 
   useEffect(() => {
     setOrders(null)
+    setSelected(new Set())
     load()
   }, [load])
+
+  const toggleSelect = (id: string, checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  const bulkApplyStatus = async () => {
+    if (!selected.size) return
+    setBulkBusy(true)
+    let ok = 0
+    for (const id of selected) {
+      try {
+        await api(`/admin/orders/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: bulkStatus }),
+        })
+        ok++
+      } catch {
+        /* tekil hata toplu islemi durdurmasin */
+      }
+    }
+    toast.success(`${ok} sipariş "${ORDER_STATUS_TR[bulkStatus]}" olarak güncellendi`)
+    setSelected(new Set())
+    setBulkBusy(false)
+    load()
+  }
+
+  const bulkDelete = async () => {
+    if (!selected.size) return
+    if (
+      !confirm(
+        `${selected.size} sipariş KALICI olarak silinecek ve geri alınamaz. Emin misiniz?`,
+      )
+    )
+      return
+    setBulkBusy(true)
+    let ok = 0
+    for (const id of selected) {
+      try {
+        await api(`/admin/orders/${id}`, { method: "DELETE" })
+        ok++
+      } catch {
+        /* devam */
+      }
+    }
+    toast.success(`${ok} sipariş silindi`)
+    setSelected(new Set())
+    setBulkBusy(false)
+    load()
+  }
 
   const doExport = async () => {
     setExporting(true)
@@ -407,11 +494,74 @@ function AdminOrdersContent() {
       ) : orders.length === 0 ? (
         <p className="py-24 text-center text-sm text-muted-foreground">Sipariş bulunamadı.</p>
       ) : (
-        <div className="space-y-3">
-          {orders.map((o) => (
-            <OrderRow key={o.id} order={o} onChanged={load} />
-          ))}
-        </div>
+        <>
+          {/* Toplu işlem çubuğu */}
+          <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-4 py-2.5">
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold">
+              <input
+                type="checkbox"
+                checked={selected.size === orders.length && orders.length > 0}
+                onChange={(e) =>
+                  setSelected(e.target.checked ? new Set(orders.map((o) => o.id)) : new Set())
+                }
+                className="h-4 w-4 accent-[oklch(0.63_0.065_75)]"
+              />
+              Tümünü Seç
+            </label>
+            {selected.size > 0 && (
+              <>
+                <span className="rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold text-accent-foreground">
+                  {selected.size} seçili
+                </span>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={bulkStatus}
+                    onChange={(e) => setBulkStatus(e.target.value as Order["status"])}
+                    className="h-8 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-accent"
+                  >
+                    {STATUSES.map((st) => (
+                      <option key={st} value={st}>
+                        {ORDER_STATUS_TR[st]}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    disabled={bulkBusy}
+                    onClick={() => void bulkApplyStatus()}
+                    className="h-8 rounded-md bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-accent disabled:opacity-50"
+                  >
+                    {bulkBusy ? "..." : "Durumu Uygula"}
+                  </button>
+                </div>
+                <button
+                  disabled={bulkBusy}
+                  onClick={() => void bulkDelete()}
+                  className="flex h-8 items-center gap-1.5 rounded-md border border-destructive/40 px-4 text-xs font-semibold text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
+                >
+                  <Trash2 className="h-3 w-3" /> Seçilenleri Sil
+                </button>
+                <button
+                  onClick={() => setSelected(new Set())}
+                  className="ml-auto text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  Seçimi temizle
+                </button>
+              </>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {orders.map((o) => (
+              <OrderRow
+                key={o.id}
+                order={o}
+                onChanged={load}
+                selected={selected.has(o.id)}
+                onSelect={(checked) => toggleSelect(o.id, checked)}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   )

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -75,6 +76,10 @@ class VariantDto {
   @IsOptional()
   @IsString()
   sku?: string;
+
+  @IsOptional()
+  @IsString()
+  image?: string | null;
 }
 
 class ProductDto {
@@ -170,6 +175,10 @@ class ProductDto {
 
   @IsOptional()
   @IsString()
+  sku?: string;
+
+  @IsOptional()
+  @IsString()
   categoryId?: string | null;
 
   @IsOptional()
@@ -219,6 +228,106 @@ export class AdminProductsController {
     private readonly logs: LogsService,
   ) {}
 
+  /**
+   * SKU tutarliligi: form icinde tekrarlanan veya baska urun/varyantta
+   * kullanilan kodlari reddeder, bos birakilanlara benzersiz kod uretir.
+   * Donen deger: { productSku, variantSkus[] } — hepsi dolu ve benzersiz.
+   */
+  private async resolveSkus(
+    productId: string | null,
+    productName: string,
+    productSku: string | undefined,
+    variants: VariantDto[] | undefined,
+  ): Promise<{ productSku: string; variantSkus: string[] }> {
+    const normalize = (v?: string | null) => v?.trim().toUpperCase() || null;
+
+    // 1) Form icinde ayni kod iki kez kullanilmis mi?
+    const provided = [
+      normalize(productSku),
+      ...(variants ?? []).map((v) => normalize(v.sku)),
+    ].filter((v): v is string => !!v);
+    const dupInForm = provided.find((v, i) => provided.indexOf(v) !== i);
+    if (dupInForm) {
+      throw new BadRequestException(
+        `"${dupInForm}" stok kodu bu formda birden fazla kez kullanılmış. Her seçeneğin kodu farklı olmalı.`,
+      );
+    }
+
+    // 2) Baska urunlerde/varyantlarda kullaniliyor mu?
+    if (provided.length) {
+      const clashProduct = await this.products
+        .createQueryBuilder('p')
+        .where('UPPER(p.sku) IN (:...skus)', { skus: provided })
+        .andWhere(productId ? 'p.id != :pid' : '1=1', { pid: productId })
+        .getOne();
+      if (clashProduct) {
+        throw new BadRequestException(
+          `"${normalize(clashProduct.sku)}" stok kodu zaten "${clashProduct.name}" ürününde kayıtlı. Önce oradan silin veya farklı bir kod girin.`,
+        );
+      }
+      const clashVariant = await this.variants
+        .createQueryBuilder('v')
+        .leftJoinAndSelect('v.product', 'p')
+        .where('UPPER(v.sku) IN (:...skus)', { skus: provided })
+        .andWhere(productId ? 'v."productId" != :pid' : '1=1', { pid: productId })
+        .getOne();
+      if (clashVariant) {
+        throw new BadRequestException(
+          `"${normalize(clashVariant.sku)}" stok kodu zaten "${clashVariant.product?.name ?? 'başka bir ürün'} — ${clashVariant.name}" seçeneğinde kayıtlı. Önce oradan silin veya farklı bir kod girin.`,
+        );
+      }
+    }
+
+    // 3) Bos birakilanlara benzersiz kod uret (urun adinin bas harfleri + rastgele)
+    const prefix =
+      productName
+        .split(/\s+/)
+        .map((w) => slugify(w).charAt(0))
+        .join('')
+        .toUpperCase()
+        .slice(0, 3) || 'MIA';
+    const used = new Set(provided);
+    const generate = async (): Promise<string> => {
+      for (let i = 0; i < 20; i++) {
+        const candidate = `${prefix}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+        if (used.has(candidate)) continue;
+        const inProducts = await this.products.findOne({ where: { sku: candidate } });
+        const inVariants = await this.variants.findOne({ where: { sku: candidate } });
+        if (!inProducts && !inVariants) {
+          used.add(candidate);
+          return candidate;
+        }
+      }
+      return `${prefix}-${Date.now().toString(36).toUpperCase()}`;
+    };
+
+    const finalProductSku = normalize(productSku) ?? (await generate());
+    const variantSkus: string[] = [];
+    for (const v of variants ?? []) {
+      variantSkus.push(normalize(v.sku) ?? (await generate()));
+    }
+    return { productSku: finalProductSku, variantSkus };
+  }
+
+  /**
+   * Varyantli urunlerde ust duzey fiyat/stok formdan degil seceneklerden
+   * turetilir: stok = toplam, fiyat = en dusuk secenek fiyati.
+   */
+  private deriveFromVariants(data: {
+    price: number;
+    compareAtPrice?: number | null;
+    stock: number;
+  }, variants?: VariantDto[]) {
+    if (!variants?.length) return data;
+    const cheapest = variants.reduce((a, b) => (a.price <= b.price ? a : b));
+    return {
+      ...data,
+      price: cheapest.price,
+      compareAtPrice: cheapest.compareAtPrice ?? null,
+      stock: variants.reduce((sum, v) => sum + v.stock, 0),
+    };
+  }
+
   private logAdmin(admin: AuthUser, action: string, detail: string) {
     this.logs.record({
       userId: admin.id,
@@ -242,16 +351,22 @@ export class AdminProductsController {
   @Post('products')
   async create(@Body() dto: ProductDto, @CurrentUser() admin: AuthUser) {
     this.logAdmin(admin!, 'product.create', `Ürün eklendi: ${dto.name}`);
-    const { imageUrls, variants, ...data } = dto;
+    const { imageUrls, variants, sku, ...data } = dto;
     let slug = slugify(data.name);
     const clash = await this.products.findOne({ where: { slug } });
     if (clash) slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
 
+    const { productSku, variantSkus } = await this.resolveSkus(null, data.name, sku, variants);
+    const derived = this.deriveFromVariants(data, variants);
+    variants?.forEach((v, i) => (v.sku = variantSkus[i]));
+
     const product = await this.products.save(
       this.products.create({
         ...data,
+        ...derived,
+        sku: productSku,
         slug,
-        compareAtPrice: data.compareAtPrice ?? null,
+        compareAtPrice: derived.compareAtPrice ?? null,
         shippingFee: data.shippingFee ?? null,
       }),
     );
@@ -283,6 +398,7 @@ export class AdminProductsController {
           compareAtPrice: v.compareAtPrice ?? null,
           stock: v.stock,
           sku: v.sku?.trim() || null,
+          image: v.image ?? null,
           sortOrder: i,
           isActive: true,
         }),
@@ -301,9 +417,13 @@ export class AdminProductsController {
     this.logAdmin(admin!, 'product.update', `Ürün güncellendi: ${product.name}`);
 
     const wasOutOfStock = product.stock <= 0;
-    const { imageUrls, variants, ...data } = dto;
-    Object.assign(product, data, {
-      compareAtPrice: data.compareAtPrice ?? null,
+    const { imageUrls, variants, sku, ...data } = dto;
+    const { productSku, variantSkus } = await this.resolveSkus(id, data.name, sku, variants);
+    const derived = this.deriveFromVariants(data, variants);
+    variants?.forEach((v, i) => (v.sku = variantSkus[i]));
+    Object.assign(product, data, derived, {
+      sku: productSku,
+      compareAtPrice: derived.compareAtPrice ?? null,
       shippingFee: data.shippingFee ?? null,
     });
     await this.products.save(product);

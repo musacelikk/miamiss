@@ -23,6 +23,7 @@ import {
 } from "@/lib/api"
 import { formatPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { ImagePicker } from "@/components/admin/image-picker"
 
 const EMPTY = {
   name: "",
@@ -39,6 +40,7 @@ const EMPTY = {
   depthCm: "",
   weightKg: "",
   shippingFee: "",
+  sku: "",
   price: "",
   compareAtPrice: "",
   stock: "0",
@@ -46,7 +48,14 @@ const EMPTY = {
   isFeatured: false,
   categoryId: "",
   imageUrls: [] as string[],
-  variants: [] as { name: string; price: string; compareAtPrice: string; stock: string; sku: string }[],
+  variants: [] as {
+    name: string
+    price: string
+    compareAtPrice: string
+    stock: string
+    sku: string
+    image: string | null
+  }[],
 }
 
 type FormState = typeof EMPTY & { id?: string }
@@ -61,6 +70,91 @@ export default function AdminProductsPage() {
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const [newCategory, setNewCategory] = useState("")
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [sortBy, setSortBy] = useState<"name" | "price" | "stock" | "isActive" | "viewCount" | null>(null)
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
+
+  const toggleSort = (key: NonNullable<typeof sortBy>) => {
+    if (sortBy === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+    } else {
+      setSortBy(key)
+      setSortDir("asc")
+    }
+  }
+
+  const sortedProducts = products
+    ? [...products].sort((a, b) => {
+        if (!sortBy) return 0
+        const dir = sortDir === "asc" ? 1 : -1
+        if (sortBy === "name") return a.name.localeCompare(b.name, "tr") * dir
+        if (sortBy === "isActive") return (Number(a.isActive) - Number(b.isActive)) * dir
+        return ((a[sortBy] ?? 0) as number) > ((b[sortBy] ?? 0) as number)
+          ? dir
+          : ((a[sortBy] ?? 0) as number) < ((b[sortBy] ?? 0) as number)
+            ? -dir
+            : 0
+      })
+    : null
+
+  const toggleSelect = (id: string, checked: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+
+  /** Toplu aktif/pasif: mevcut alanlari koruyarak yalnizca isActive degistirir */
+  const bulkSetActive = async (isActive: boolean) => {
+    if (!products || !selected.size) return
+    setBulkBusy(true)
+    let ok = 0
+    for (const p of products.filter((x) => selected.has(x.id))) {
+      try {
+        await api(`/admin/products/${p.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            name: p.name,
+            price: p.price,
+            stock: p.stock,
+            compareAtPrice: p.compareAtPrice ?? undefined,
+            shippingFee: p.shippingFee ?? undefined,
+            isFeatured: p.isFeatured,
+            categoryId: p.categoryId ?? undefined,
+            isActive,
+          }),
+        })
+        ok++
+      } catch {
+        /* devam */
+      }
+    }
+    toast.success(`${ok} ürün ${isActive ? "satışa açıldı" : "satıştan kaldırıldı"}`)
+    setSelected(new Set())
+    setBulkBusy(false)
+    load()
+  }
+
+  const bulkDelete = async () => {
+    if (!selected.size) return
+    if (!confirm(`${selected.size} ürün kalıcı olarak silinecek. Emin misiniz?`)) return
+    setBulkBusy(true)
+    let ok = 0
+    for (const id of selected) {
+      try {
+        await api(`/admin/products/${id}`, { method: "DELETE" })
+        ok++
+      } catch {
+        /* devam */
+      }
+    }
+    toast.success(`${ok} ürün silindi`)
+    setSelected(new Set())
+    setBulkBusy(false)
+    load()
+  }
 
   const load = useCallback(() => {
     const q = search ? `?search=${encodeURIComponent(search)}` : ""
@@ -93,6 +187,7 @@ export default function AdminProductsPage() {
       depthCm: p.depthCm != null ? String(p.depthCm) : "",
       weightKg: p.weightKg != null ? String(p.weightKg) : "",
       shippingFee: p.shippingFee != null ? String(p.shippingFee) : "",
+      sku: p.sku ?? "",
       price: String(p.price),
       compareAtPrice: p.compareAtPrice ? String(p.compareAtPrice) : "",
       stock: String(p.stock),
@@ -110,6 +205,7 @@ export default function AdminProductsPage() {
           compareAtPrice: v.compareAtPrice != null ? String(v.compareAtPrice) : "",
           stock: String(v.stock),
           sku: v.sku ?? "",
+          image: v.image ?? null,
         })),
     })
 
@@ -149,6 +245,7 @@ export default function AdminProductsPage() {
         depthCm: form.depthCm ? parseFloat(form.depthCm) : undefined,
         weightKg: form.weightKg ? parseFloat(form.weightKg) : undefined,
         shippingFee: form.shippingFee ? parseFloat(form.shippingFee) : undefined,
+        sku: form.sku.trim() || undefined,
         price: parseFloat(form.price),
         compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : undefined,
         stock: parseInt(form.stock, 10) || 0,
@@ -164,6 +261,7 @@ export default function AdminProductsPage() {
             compareAtPrice: v.compareAtPrice ? parseFloat(v.compareAtPrice) : undefined,
             stock: parseInt(v.stock, 10) || 0,
             sku: v.sku.trim() || undefined,
+            image: v.image ?? undefined,
           })),
       }
       if (form.id) {
@@ -210,6 +308,7 @@ export default function AdminProductsPage() {
 
   const input =
     "w-full rounded-md border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-accent"
+  const formHasVariants = !!form && form.variants.some((v) => v.name.trim())
 
   return (
     <div className="space-y-6">
@@ -264,16 +363,36 @@ export default function AdminProductsPage() {
                   className={input}
                 />
               </div>
+              {formHasVariants && (
+                <p className="rounded-md bg-secondary/70 p-3 text-xs leading-relaxed text-muted-foreground sm:col-span-2">
+                  Bu üründe <strong className="text-foreground">seçenekler tanımlı</strong> —
+                  fiyat ve stok, seçeneklerden otomatik hesaplanır (fiyat: en düşük seçenek,
+                  stok: seçeneklerin toplamı). Aşağıdaki alanlar bu yüzden kilitli.
+                </p>
+              )}
               <div>
-                <label className="mb-1.5 block text-xs font-semibold">Fiyat (TL) *</label>
+                <label className="mb-1.5 block text-xs font-semibold">
+                  Fiyat (TL) {formHasVariants ? "(seçeneklerden)" : "*"}
+                </label>
                 <input
                   required
                   type="number"
                   step="0.01"
                   min="0"
-                  value={form.price}
+                  disabled={formHasVariants}
+                  value={
+                    formHasVariants
+                      ? String(
+                          Math.min(
+                            ...form.variants
+                              .filter((v) => v.name.trim())
+                              .map((v) => parseFloat(v.price) || 0),
+                          ),
+                        )
+                      : form.price
+                  }
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
-                  className={input}
+                  className={cn(input, formHasVariants && "opacity-50")}
                 />
               </div>
               <div>
@@ -284,21 +403,44 @@ export default function AdminProductsPage() {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={form.compareAtPrice}
+                  disabled={formHasVariants}
+                  value={formHasVariants ? "" : form.compareAtPrice}
                   onChange={(e) => setForm({ ...form, compareAtPrice: e.target.value })}
-                  className={input}
-                  placeholder="Boş bırakılabilir"
+                  className={cn(input, formHasVariants && "opacity-50")}
+                  placeholder={formHasVariants ? "Seçenek bazında girilir" : "Boş bırakılabilir"}
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold">Stok *</label>
+                <label className="mb-1.5 block text-xs font-semibold">
+                  Stok {formHasVariants ? "(toplam)" : "*"}
+                </label>
                 <input
                   required
                   type="number"
                   min="0"
-                  value={form.stock}
+                  disabled={formHasVariants}
+                  value={
+                    formHasVariants
+                      ? String(
+                          form.variants
+                            .filter((v) => v.name.trim())
+                            .reduce((sum, v) => sum + (parseInt(v.stock, 10) || 0), 0),
+                        )
+                      : form.stock
+                  }
                   onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                  className={input}
+                  className={cn(input, formHasVariants && "opacity-50")}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold">
+                  Stok Kodu (SKU)
+                </label>
+                <input
+                  value={form.sku}
+                  onChange={(e) => setForm({ ...form, sku: e.target.value.toUpperCase() })}
+                  className={cn(input, "font-mono uppercase")}
+                  placeholder="Boş bırakılırsa otomatik atanır"
                 />
               </div>
               <div>
@@ -424,10 +566,11 @@ export default function AdminProductsPage() {
                       {cost != null && (
                         <>
                           {" "}
-                          → Tahmini kargo maliyeti:{" "}
+                          → Sana tahmini kargo maliyeti:{" "}
                           <strong className="text-accent">{formatPrice(cost)}</strong>
                           <span className="ml-1 text-xs text-muted-foreground">
-                            (Ayarlar'daki desi tarifesine göre)
+                            (Ayarlar'daki desi maliyet tablosuna göre — müşteri fiyatını
+                            etkilemez)
                           </span>
                         </>
                       )}
@@ -471,7 +614,7 @@ export default function AdminProductsPage() {
                         ...form,
                         variants: [
                           ...form.variants,
-                          { name: "", price: form.price || "", compareAtPrice: "", stock: "0", sku: "" },
+                          { name: "", price: form.price || "", compareAtPrice: "", stock: "0", sku: "", image: null },
                         ],
                       })
                     }
@@ -483,12 +626,14 @@ export default function AdminProductsPage() {
                 <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
                   Boş bırakırsan ürün <strong>tek fiyat ve tek stokla</strong> satılır. Seçenek
                   eklersen (Büyük / Küçük / İkili Set gibi) müşteri seçim yapar; fiyat ve stok
-                  her seçenek için ayrı tutulur ve yukarıdaki fiyat/stok alanları kullanılmaz.
+                  her seçenek için ayrı tutulur. Görsel yüklemezsen ürünün ana görseli
+                  gösterilmeye devam eder; stok kodunu boş bırakırsan otomatik atanır.
                 </p>
 
                 {form.variants.length > 0 && (
                   <div className="mt-3 space-y-2">
-                    <div className="hidden gap-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[1fr_90px_90px_70px_90px_32px]">
+                    <div className="hidden gap-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[44px_1fr_90px_90px_70px_90px_32px]">
+                      <span>Görsel</span>
                       <span>Seçenek Adı</span>
                       <span>Fiyat</span>
                       <span>İndirimsiz</span>
@@ -505,8 +650,16 @@ export default function AdminProductsPage() {
                       return (
                         <div
                           key={i}
-                          className="grid gap-2 sm:grid-cols-[1fr_90px_90px_70px_90px_32px] sm:items-center"
+                          className="grid gap-2 sm:grid-cols-[44px_1fr_90px_90px_70px_90px_32px] sm:items-center"
                         >
+                          <div className="w-11">
+                            <ImagePicker
+                              value={v.image}
+                              onChange={(url) => setVariant({ image: url })}
+                              aspect="aspect-square"
+                              className="h-11 w-11"
+                            />
+                          </div>
                           <input
                             value={v.name}
                             onChange={(e) => setVariant({ name: e.target.value })}
@@ -664,35 +817,124 @@ export default function AdminProductsPage() {
         </div>
       )}
 
+      {/* Toplu işlem çubuğu */}
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-accent/50 bg-card px-4 py-2.5">
+          <span className="rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold text-accent-foreground">
+            {selected.size} seçili
+          </span>
+          <button
+            disabled={bulkBusy}
+            onClick={() => void bulkSetActive(true)}
+            className="h-8 rounded-md border border-border px-4 text-xs font-semibold hover:border-accent hover:text-accent disabled:opacity-50"
+          >
+            Satışa Aç
+          </button>
+          <button
+            disabled={bulkBusy}
+            onClick={() => void bulkSetActive(false)}
+            className="h-8 rounded-md border border-border px-4 text-xs font-semibold hover:border-accent hover:text-accent disabled:opacity-50"
+          >
+            Satıştan Kaldır
+          </button>
+          <button
+            disabled={bulkBusy}
+            onClick={() => void bulkDelete()}
+            className="flex h-8 items-center gap-1.5 rounded-md border border-destructive/40 px-4 text-xs font-semibold text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
+          >
+            <Trash2 className="h-3 w-3" /> Seçilenleri Sil
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            className="ml-auto text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            Seçimi temizle
+          </button>
+        </div>
+      )}
+
       {/* Tablo */}
       <div className="overflow-x-auto rounded-md border border-border bg-card">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="px-4 py-3">Ürün</th>
-              <th className="px-4 py-3">Kategori</th>
-              <th className="px-4 py-3">Fiyat</th>
-              <th className="px-4 py-3">Stok</th>
-              <th className="px-4 py-3">Durum</th>
+              <th className="w-10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={!!products && products.length > 0 && selected.size === products.length}
+                  onChange={(e) =>
+                    setSelected(
+                      e.target.checked && products
+                        ? new Set(products.map((p) => p.id))
+                        : new Set(),
+                    )
+                  }
+                  className="h-4 w-4 accent-[oklch(0.63_0.065_75)]"
+                  aria-label="Tümünü seç"
+                />
+              </th>
+              {(
+                [
+                  ["name", "Ürün"],
+                  [null, "Kategori"],
+                  ["price", "Fiyat"],
+                  ["stock", "Stok"],
+                  ["isActive", "Durum"],
+                ] as const
+              ).map(([key, labelText]) => (
+                <th key={labelText} className="px-4 py-3">
+                  {key ? (
+                    <button
+                      onClick={() => toggleSort(key)}
+                      className={cn(
+                        "flex items-center gap-1 uppercase tracking-wide transition-colors hover:text-foreground",
+                        sortBy === key && "text-foreground",
+                      )}
+                    >
+                      {labelText}
+                      <span className="text-[9px]">
+                        {sortBy === key ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+                      </span>
+                    </button>
+                  ) : (
+                    labelText
+                  )}
+                </th>
+              ))}
               <th className="px-4 py-3 text-right">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {products === null ? (
+            {sortedProducts === null ? (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center">
+                <td colSpan={7} className="px-4 py-12 text-center">
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-accent" />
                 </td>
               </tr>
-            ) : products.length === 0 ? (
+            ) : sortedProducts.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                   Ürün bulunamadı.
                 </td>
               </tr>
             ) : (
-              products.map((p) => (
-                <tr key={p.id} className="transition-colors hover:bg-secondary/40">
+              sortedProducts.map((p) => (
+                <tr
+                  key={p.id}
+                  className={
+                    "transition-colors hover:bg-secondary/40 " +
+                    (selected.has(p.id) ? "bg-secondary/50" : "")
+                  }
+                >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(p.id)}
+                      onChange={(e) => toggleSelect(p.id, e.target.checked)}
+                      className="h-4 w-4 accent-[oklch(0.63_0.065_75)]"
+                      aria-label={`${p.name} seç`}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -706,7 +948,14 @@ export default function AdminProductsPage() {
                           {p.name}
                           {p.isFeatured && <Star className="h-3 w-3 fill-accent text-accent" />}
                         </p>
-                        <p className="text-xs text-muted-foreground">/{p.slug}</p>
+                        <p className="text-xs text-muted-foreground">
+                          /{p.slug}
+                          {p.sku && (
+                            <span className="ml-2 font-mono text-[10px] text-accent">
+                              {p.sku}
+                            </span>
+                          )}
+                        </p>
                       </div>
                     </div>
                   </td>
