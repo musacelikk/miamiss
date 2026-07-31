@@ -239,6 +239,58 @@ export class MailService {
     );
   }
 
+  /** Yeni iade talebini isletmeciye bildirir. */
+  returnNotifyAdmin(req: {
+    returnNo: string;
+    orderNo: string;
+    email: string;
+    reason: string;
+    description: string;
+    imageCount: number;
+  }): void {
+    const to = process.env.SUPPORT_EMAIL;
+    if (!to) return;
+    const adminUrl = process.env.ADMIN_URL ?? 'https://admin.miamisuhome.com';
+    this.send(
+      to,
+      `Yeni iade talebi — ${req.returnNo}`,
+      `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Yeni İade Talebi</h2>
+       <p style="font-size:13px;color:#9b9184;margin:0 0 14px;">
+         Sipariş: ${req.orderNo} · ${req.email} · ${req.imageCount} fotoğraf
+       </p>
+       <p style="font-size:14px;"><strong>Sebep:</strong> ${req.reason}</p>
+       <div style="background:#f7f4ee;border-radius:6px;padding:16px;font-size:14px;white-space:pre-wrap;">${escapeHtml(req.description)}</div>
+       <p style="margin:20px 0 0;"><a href="${adminUrl}/iadeler"
+          style="background:#2e2925;color:#fff;padding:11px 24px;border-radius:4px;text-decoration:none;font-size:14px;">Panelden İncele</a></p>`,
+    );
+  }
+
+  /** Iade karari musteriye bildirilir. */
+  returnDecisionToCustomer(
+    email: string,
+    returnNo: string,
+    orderNo: string,
+    status: string,
+    note: string | null,
+  ): void {
+    const statusText =
+      status === 'APPROVED'
+        ? 'onaylandı ✓ — kargo süreci için sizinle iletişime geçeceğiz'
+        : status === 'REJECTED'
+          ? 'maalesef reddedildi'
+          : status === 'COMPLETED'
+            ? 'tamamlandı, ücret iadeniz yapıldı'
+            : 'güncellendi';
+    this.send(
+      email,
+      `İade talebiniz ${status === 'APPROVED' ? 'onaylandı' : status === 'REJECTED' ? 'reddedildi' : 'güncellendi'} — ${returnNo}`,
+      `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">İade Talebiniz Hakkında</h2>
+       <p style="font-size:14px;"><strong>${orderNo}</strong> siparişiniz için oluşturduğunuz
+       <strong>${returnNo}</strong> numaralı iade talebiniz ${statusText}.</p>
+       ${note ? `<div style="background:#f7f4ee;border-radius:6px;padding:16px;font-size:14px;margin-top:12px;white-space:pre-wrap;">${escapeHtml(note)}</div>` : ''}`,
+    );
+  }
+
   passwordReset(email: string, name: string, resetUrl: string): void {
     this.send(
       email,

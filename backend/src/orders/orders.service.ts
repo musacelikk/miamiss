@@ -69,6 +69,18 @@ export class OrdersService {
     private readonly mail: MailService,
   ) {}
 
+  /** Durumu degistirir ve gecmise damgali kayit ekler. */
+  async setStatus(orderId: string, status: OrderStatus): Promise<void> {
+    const order = await this.orders.findOne({ where: { id: orderId } });
+    if (!order || order.status === status) return;
+    order.status = status;
+    order.statusHistory = [
+      ...(order.statusHistory ?? []),
+      { status, at: new Date().toISOString() },
+    ];
+    await this.orders.save(order);
+  }
+
   private generateOrderNo(): string {
     return `MIA-${randomBytes(4).toString('hex').toUpperCase()}`;
   }
@@ -93,7 +105,7 @@ export class OrdersService {
     const products = hasProducts
       ? await this.products.find({
           where: { id: In(productIds), isActive: true },
-          relations: { images: true, variants: true },
+          relations: { images: true, variants: true, category: true },
         })
       : [];
     const productMap = new Map(products.map((p) => [p.id, p]));
@@ -140,6 +152,7 @@ export class OrdersService {
           variantName: variant?.name ?? null,
           name: product.name,
           imageUrl: product.images?.[0]?.url ?? null,
+          categorySlug: product.category?.slug ?? null,
           unitPrice,
           quantity: qty,
         }),
@@ -280,6 +293,7 @@ export class OrdersService {
           invoiceTaxNo: input.invoiceTaxNo ?? null,
           invoiceTaxOffice: input.invoiceTaxOffice ?? null,
           invoiceAddress: input.invoiceAddress ?? null,
+          statusHistory: [{ status: OrderStatus.PENDING, at: new Date().toISOString() }],
           note: input.note ?? null,
           items: orderItems,
         }),
@@ -315,7 +329,7 @@ export class OrdersService {
   async track(orderNo: string, email: string): Promise<Order> {
     const order = await this.orders.findOne({
       where: { orderNo: orderNo.trim().toUpperCase(), email: email.trim().toLowerCase() },
-      relations: { items: true },
+      relations: { items: { product: { category: true }, boughtGiftCard: true } },
     });
     if (!order) throw new NotFoundException('Sipariş bulunamadı. Bilgileri kontrol edin.');
     return order;
@@ -324,7 +338,7 @@ export class OrdersService {
   async listForUser(userId: string): Promise<Order[]> {
     return this.orders.find({
       where: { userId },
-      relations: { items: true },
+      relations: { items: { product: { category: true }, boughtGiftCard: true } },
       order: { createdAt: 'DESC' },
     });
   }
@@ -338,6 +352,10 @@ export class OrdersService {
     order.paymentStatus = status;
     if (status === PaymentStatus.PAID && order.status === OrderStatus.PENDING) {
       order.status = OrderStatus.CONFIRMED;
+      order.statusHistory = [
+        ...(order.statusHistory ?? []),
+        { status: OrderStatus.CONFIRMED, at: new Date().toISOString() },
+      ];
     }
     await this.orders.save(order);
 
@@ -429,6 +447,10 @@ export class OrdersService {
     }
 
     order.status = OrderStatus.CANCELLED;
+    order.statusHistory = [
+      ...(order.statusHistory ?? []),
+      { status: OrderStatus.CANCELLED, at: new Date().toISOString() },
+    ];
     if (order.paymentStatus === PaymentStatus.PAID) {
       order.paymentStatus = PaymentStatus.REFUNDED;
     }

@@ -45,6 +45,10 @@ export class OrderItem {
   @Column({ type: 'varchar', nullable: true })
   imageUrl: string | null;
 
+  /** Siparis anindaki kategori (urun silinirse benzer urunlere yonlendirme icin) */
+  @Column({ type: 'varchar', nullable: true })
+  categorySlug: string | null;
+
   @Column({ type: 'numeric', precision: 10, scale: 2, transformer: numericTransformer })
   unitPrice: number;
 

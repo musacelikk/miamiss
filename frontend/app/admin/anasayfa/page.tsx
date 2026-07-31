@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ExternalLink, Loader2 } from "lucide-react"
+import { ArrowDown, ArrowUp, ExternalLink, Eye, EyeOff, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import {
   api,
@@ -61,17 +61,41 @@ export default function AdminHomepagePage() {
     }
   }
 
-  const saveCategoryImage = async (cat: Category, image: string | null) => {
+  const patchCategory = async (cat: Category, patch: Partial<Category>, quiet = false) => {
     try {
       await api(`/admin/categories/${cat.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ name: cat.name, sortOrder: cat.sortOrder, image }),
+        body: JSON.stringify({
+          name: cat.name,
+          sortOrder: patch.sortOrder ?? cat.sortOrder,
+          image: patch.image !== undefined ? patch.image : (cat.image ?? null),
+          showOnHomepage: patch.showOnHomepage ?? cat.showOnHomepage ?? true,
+        }),
       })
-      setCategories((prev) => prev.map((c) => (c.id === cat.id ? { ...c, image } : c)))
-      toast.success(`${cat.name} görseli güncellendi`)
+      setCategories((prev) =>
+        prev
+          .map((c) => (c.id === cat.id ? { ...c, ...patch } : c))
+          .sort((a, b) => a.sortOrder - b.sortOrder),
+      )
+      if (!quiet) toast.success(`${cat.name} güncellendi`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Güncellenemedi")
     }
+  }
+
+  const saveCategoryImage = (cat: Category, image: string | null) =>
+    patchCategory(cat, { image })
+
+  /** Komsu kategoriyle sira degeri takasi */
+  const moveCategory = async (index: number, dir: -1 | 1) => {
+    const target = index + dir
+    if (target < 0 || target >= categories.length) return
+    const a = categories[index]
+    const b = categories[target]
+    await Promise.all([
+      patchCategory(a, { sortOrder: b.sortOrder }, true),
+      patchCategory(b, { sortOrder: a.sortOrder }, true),
+    ])
   }
 
   const input =
@@ -251,17 +275,64 @@ export default function AdminHomepagePage() {
           <p className="mt-1 text-xs text-muted-foreground">
             Anasayfadaki kategori kartlarında kullanılır.
           </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Anasayfada en fazla 5 kategori, buradaki sırayla gösterilir. Göz ikonuyla
+            gizleyebilir, oklarla sırayı değiştirebilirsiniz.
+          </p>
           <div className="mt-4 grid grid-cols-3 gap-4 sm:grid-cols-5">
-            {categories.map((cat) => (
-              <div key={cat.id}>
-                <ImagePicker
-                  value={cat.image ?? null}
-                  onChange={(url) => void saveCategoryImage(cat, url)}
-                  aspect="aspect-[3/4]"
-                />
-                <p className="mt-1.5 text-center text-xs font-medium">{cat.name}</p>
-              </div>
-            ))}
+            {categories.map((cat, i) => {
+              const hidden = cat.showOnHomepage === false
+              return (
+                <div key={cat.id} className={hidden ? "opacity-45" : undefined}>
+                  <ImagePicker
+                    value={cat.image ?? null}
+                    onChange={(url) => void saveCategoryImage(cat, url)}
+                    aspect="aspect-[3/4]"
+                  />
+                  <p className="mt-1.5 truncate text-center text-xs font-medium">
+                    {i < 5 && !hidden && (
+                      <span className="mr-1 text-accent">{i + 1}.</span>
+                    )}
+                    {cat.name}
+                  </p>
+                  <div className="mt-1.5 flex items-center justify-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => void moveCategory(i, -1)}
+                      disabled={i === 0}
+                      className="rounded border border-border p-1.5 text-muted-foreground hover:border-accent hover:text-accent disabled:opacity-30"
+                      aria-label="Yukarı taşı"
+                    >
+                      <ArrowUp className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void moveCategory(i, 1)}
+                      disabled={i === categories.length - 1}
+                      className="rounded border border-border p-1.5 text-muted-foreground hover:border-accent hover:text-accent disabled:opacity-30"
+                      aria-label="Aşağı taşı"
+                    >
+                      <ArrowDown className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void patchCategory(cat, { showOnHomepage: hidden })
+                      }
+                      className={
+                        "rounded border p-1.5 " +
+                        (hidden
+                          ? "border-border text-muted-foreground hover:border-accent hover:text-accent"
+                          : "border-accent bg-accent/10 text-accent")
+                      }
+                      aria-label={hidden ? "Anasayfada göster" : "Anasayfadan gizle"}
+                    >
+                      {hidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </section>
       )}

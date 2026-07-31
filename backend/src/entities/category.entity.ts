@@ -19,6 +19,10 @@ export class Category {
   @Column({ type: 'varchar', nullable: true })
   image: string | null;
 
+  /** Anasayfadaki "Ne Ariyorsunuz?" bolumunde gorunsun mu */
+  @Column({ default: true })
+  showOnHomepage: boolean;
+
   @OneToMany(() => Product, (p) => p.category)
   products: Product[];
 }

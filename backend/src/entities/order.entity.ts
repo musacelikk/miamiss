@@ -107,6 +107,10 @@ export class Order {
   @Column({ type: 'text', nullable: true })
   invoiceAddress: string | null;
 
+  /** Durum gecmisi: [{ status, at(ISO) }] — zaman cizelgesi tooltip'leri icin */
+  @Column({ type: 'jsonb', default: [] })
+  statusHistory: { status: string; at: string }[];
+
   @Column({ type: 'text', nullable: true })
   note: string | null;
 

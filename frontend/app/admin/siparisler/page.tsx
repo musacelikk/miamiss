@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { ChevronDown, Download, Loader2 } from "lucide-react"
+import { ChevronDown, Download, Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import {
   api,
@@ -251,6 +251,27 @@ function OrderRow({ order, onChanged }: { order: Order; onChanged: () => void })
                   Siparişi İptal Et
                 </button>
               )}
+              <button
+                disabled={busy}
+                onClick={async () => {
+                  if (
+                    !confirm(
+                      `${order.orderNo} kalıcı olarak SİLİNECEK ve geri alınamaz.\nStok iadesi gerekiyorsa önce iptal edin. Emin misiniz?`,
+                    )
+                  )
+                    return
+                  try {
+                    await api(`/admin/orders/${order.id}`, { method: "DELETE" })
+                    toast.success("Sipariş silindi")
+                    onChanged()
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Silinemedi")
+                  }
+                }}
+                className="flex w-full items-center justify-center gap-1.5 rounded-md py-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-destructive"
+              >
+                <Trash2 className="h-3 w-3" /> Siparişi Kalıcı Olarak Sil
+              </button>
             </div>
           </div>
         </div>

@@ -85,6 +85,7 @@ export interface Category {
   slug: string
   sortOrder: number
   image?: string | null
+  showOnHomepage?: boolean
 }
 
 export interface ProductVariant {
@@ -325,6 +326,8 @@ export interface OrderItem {
   productId: string | null
   variantId?: string | null
   variantName?: string | null
+  categorySlug?: string | null
+  product?: { slug: string; isActive: boolean } | null
   name: string
   imageUrl: string | null
   unitPrice: number
@@ -360,6 +363,7 @@ export interface Order {
   invoiceAddress?: string | null
   trackingNo: string | null
   cargoCompany: string | null
+  statusHistory?: { status: string; at: string }[]
   items: OrderItem[]
   createdAt: string
 }

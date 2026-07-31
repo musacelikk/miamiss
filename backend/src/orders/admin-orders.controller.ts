@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Param,
@@ -100,8 +101,10 @@ export class AdminOrdersController {
     if (dto.paymentStatus && dto.paymentStatus !== order.paymentStatus) {
       await this.service.setPaymentStatus(id, dto.paymentStatus);
     }
+    if (dto.status && dto.status !== order.status) {
+      await this.service.setStatus(id, dto.status);
+    }
     const patch: Partial<Order> = {};
-    if (dto.status) patch.status = dto.status;
     if (dto.trackingNo !== undefined) patch.trackingNo = dto.trackingNo;
     if (dto.cargoCompany !== undefined) patch.cargoCompany = dto.cargoCompany;
     if (Object.keys(patch).length) await this.orders.update({ id }, patch);
@@ -117,6 +120,22 @@ export class AdminOrdersController {
     }
 
     return this.orders.findOne({ where: { id }, relations: { items: true } });
+  }
+
+  /** Siparisi kalici olarak siler (once iptal etmek stok iadesi saglar). */
+  @Delete(':id')
+  async remove(@Param('id') id: string, @CurrentUser() admin: AuthUser) {
+    const order = await this.orders.findOne({ where: { id } });
+    if (!order) throw new NotFoundException('Sipariş bulunamadı.');
+    await this.orders.delete({ id });
+    this.logs.record({
+      userId: admin!.id,
+      email: admin!.email,
+      actorType: 'ADMIN',
+      action: 'order.delete',
+      detail: `${order.orderNo} kalıcı olarak silindi (${order.shippingName}, ${order.grandTotal} TL)`,
+    });
+    return { ok: true };
   }
 
   @Post(':id/cancel')

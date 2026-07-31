@@ -40,7 +40,14 @@ export default function HomePage() {
       .then((res) => setFeatured(res.items))
       .catch(() => setFeatured([]))
     api<Category[]>("/categories", { auth: false })
-      .then(setCategories)
+      .then((cats) =>
+        setCategories(
+          cats
+            .filter((c) => c.showOnHomepage !== false)
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .slice(0, 5),
+        ),
+      )
       .catch(() => {})
   }, [])
 

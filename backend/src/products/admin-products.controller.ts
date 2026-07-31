@@ -197,6 +197,10 @@ class CategoryDto {
   @IsOptional()
   @IsString()
   image?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  showOnHomepage?: boolean;
 }
 
 @Controller('admin')

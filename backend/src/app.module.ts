@@ -20,6 +20,7 @@ import { LogsModule } from './logs/logs.module';
 import { BlogModule } from './blog/blog.module';
 import { SupportModule } from './support/support.module';
 import { MarketingModule } from './marketing/marketing.module';
+import { ReturnsModule } from './returns/returns.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { MarketingModule } from './marketing/marketing.module';
     BlogModule,
     SupportModule,
     MarketingModule,
+    ReturnsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useState } from "react"
+import { Suspense, useCallback, useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Headset, Loader2, MessageSquarePlus, Search, Send } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
@@ -18,7 +19,8 @@ import { sanitizeName } from "@/lib/input"
 
 const EMPTY = { name: "", email: "", subject: "", orderNo: "", message: "" }
 
-export default function SupportPage() {
+function SupportContent() {
+  const params = useSearchParams()
   const { user } = useAuth()
   const [tickets, setTickets] = useState<SupportTicket[] | null>(null)
   const [form, setForm] = useState(EMPTY)
@@ -48,6 +50,20 @@ export default function SupportPage() {
   useEffect(() => {
     if (user) setForm((f) => ({ ...f, name: f.name || user.name, email: f.email || user.email }))
   }, [user])
+
+  // Siparis kartindaki "Canli Destek" butonuyla gelindiyse formu doldurup ac
+  useEffect(() => {
+    const orderNo = params.get("siparis")
+    if (orderNo) {
+      setForm((f) => ({
+        ...f,
+        orderNo: orderNo.toUpperCase(),
+        subject: f.subject || `${orderNo.toUpperCase()} numaralı siparişim hakkında`,
+      }))
+      setShowForm(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const createTicket = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -316,5 +332,13 @@ export default function SupportPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function SupportPage() {
+  return (
+    <Suspense>
+      <SupportContent />
+    </Suspense>
   )
 }
