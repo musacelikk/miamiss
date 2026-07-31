@@ -71,7 +71,7 @@ export default function CartPage() {
           {/* Ürünler */}
           {items.map((item) => (
             <div
-              key={item.productId}
+              key={item.key}
               className="flex gap-4 rounded-md border border-border bg-card p-4"
             >
               <Link href={`/urunler/${item.slug}`} className="shrink-0">
@@ -91,18 +91,21 @@ export default function CartPage() {
                     {item.name}
                   </Link>
                   <button
-                    onClick={() => removeProduct(item.productId)}
+                    onClick={() => removeProduct(item.key)}
                     className="p-1 text-muted-foreground transition-colors hover:text-destructive"
                     aria-label="Kaldır"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
+                {item.variantName && (
+                  <p className="mt-0.5 text-xs font-medium text-accent">{item.variantName}</p>
+                )}
                 <p className="mt-1 text-sm text-muted-foreground">{formatPrice(item.price)}</p>
                 <div className="mt-auto flex items-center justify-between pt-3">
                   <div className="flex h-9 items-center rounded-md border border-border">
                     <button
-                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                      onClick={() => updateQuantity(item.key, item.quantity - 1)}
                       className="flex h-full w-9 items-center justify-center hover:text-accent"
                       aria-label="Azalt"
                     >
@@ -110,7 +113,7 @@ export default function CartPage() {
                     </button>
                     <span className="w-8 text-center text-sm font-semibold">{item.quantity}</span>
                     <button
-                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                      onClick={() => updateQuantity(item.key, item.quantity + 1)}
                       className="flex h-full w-9 items-center justify-center hover:text-accent"
                       aria-label="Artır"
                     >

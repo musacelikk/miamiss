@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Ip,
   NotFoundException,
   Param,
   Patch,
@@ -81,18 +82,24 @@ export class PuzzleController {
 
   @Post('puzzle/claim')
   @UseGuards(OptionalJwtAuthGuard)
-  async claim(@Body() dto: ClaimDto, @CurrentUser() user: AuthUser | null) {
+  async claim(
+    @Body() dto: ClaimDto,
+    @CurrentUser() user: AuthUser | null,
+    @Ip() ip: string,
+  ) {
     const word = await this.words.findOne({ where: { id: dto.wordId, isActive: true } });
     if (!word) throw new BadRequestException('Bulmaca bulunamadı.');
     if (normalize(dto.answer) !== normalize(word.word)) {
       throw new BadRequestException('Cevap yanlış, tekrar dene!');
     }
 
+    // Tarayici verisi (sessionKey) silinerek tekrar kazanilmasin diye IP de kontrol edilir
     const monthAgo = new Date();
     monthAgo.setDate(monthAgo.getDate() - 30);
     const already = await this.wins.findOne({
       where: [
         { sessionKey: dto.sessionKey, createdAt: MoreThan(monthAgo) },
+        ...(ip ? [{ ipAddress: ip, createdAt: MoreThan(monthAgo) }] : []),
         ...(user ? [{ userId: user.id, createdAt: MoreThan(monthAgo) }] : []),
       ],
     });
@@ -104,6 +111,7 @@ export class PuzzleController {
     await this.wins.save(
       this.wins.create({
         sessionKey: dto.sessionKey,
+        ipAddress: ip || null,
         userId: user?.id ?? null,
         wordId: word.id,
         couponId: coupon.id,

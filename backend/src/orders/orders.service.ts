@@ -4,9 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import {
+  Coupon,
   GiftCard,
   GiftCardStatus,
   Order,
@@ -16,6 +17,7 @@ import {
   PaymentMethod,
   PaymentStatus,
   Product,
+  ProductVariant,
 } from '../entities';
 import { CouponsService } from '../coupons/coupons.service';
 import { GiftCardsService } from '../gift-cards/gift-cards.service';
@@ -25,7 +27,7 @@ import { MailService } from '../mail/mail.service';
 export interface CreateOrderInput {
   userId?: string | null;
   email: string;
-  items: { productId: string; quantity: number }[];
+  items: { productId: string; quantity: number; variantId?: string | null }[];
   giftCardItems?: {
     amount: number;
     recipientName?: string;
@@ -53,6 +55,8 @@ export class OrdersService {
     @InjectRepository(OrderItem) private readonly items: Repository<OrderItem>,
     @InjectRepository(Product) private readonly products: Repository<Product>,
     @InjectRepository(GiftCard) private readonly giftCardRepo: Repository<GiftCard>,
+    @InjectRepository(ProductVariant) private readonly variants: Repository<ProductVariant>,
+    private readonly dataSource: DataSource,
     private readonly coupons: CouponsService,
     private readonly giftCards: GiftCardsService,
     private readonly settings: SettingsService,
@@ -78,12 +82,12 @@ export class OrdersService {
       }
     }
 
-    // Urunleri DB fiyatlariyla dogrula
+    // Urunleri DB fiyatlariyla dogrula (sepetten gelen fiyata guvenilmez)
     const productIds = input.items.map((i) => i.productId);
     const products = hasProducts
       ? await this.products.find({
           where: { id: In(productIds), isActive: true },
-          relations: { images: true },
+          relations: { images: true, variants: true },
         })
       : [];
     const productMap = new Map(products.map((p) => [p.id, p]));
@@ -95,17 +99,42 @@ export class OrdersService {
       const product = productMap.get(item.productId);
       if (!product) throw new BadRequestException('Sepetteki bir ürün artık satışta değil.');
       const qty = Math.max(1, Math.floor(item.quantity));
-      if (product.stock < qty) {
-        throw new BadRequestException(`"${product.name}" için yeterli stok yok (kalan: ${product.stock}).`);
+
+      const activeVariants = (product.variants ?? []).filter((v) => v.isActive);
+      let variant = null as (typeof activeVariants)[number] | null;
+
+      if (activeVariants.length) {
+        if (!item.variantId) {
+          throw new BadRequestException(`"${product.name}" için bir seçenek belirtmelisiniz.`);
+        }
+        variant = activeVariants.find((v) => v.id === item.variantId) ?? null;
+        if (!variant) {
+          throw new BadRequestException(
+            `"${product.name}" için seçtiğiniz seçenek artık mevcut değil.`,
+          );
+        }
+        if (variant.stock < qty) {
+          throw new BadRequestException(
+            `"${product.name} — ${variant.name}" için yeterli stok yok (kalan: ${variant.stock}).`,
+          );
+        }
+      } else if (product.stock < qty) {
+        throw new BadRequestException(
+          `"${product.name}" için yeterli stok yok (kalan: ${product.stock}).`,
+        );
       }
-      subtotal += product.price * qty;
+
+      const unitPrice = variant ? variant.price : product.price;
+      subtotal += unitPrice * qty;
       orderItems.push(
         this.items.create({
           itemType: OrderItemType.PRODUCT,
           productId: product.id,
+          variantId: variant?.id ?? null,
+          variantName: variant?.name ?? null,
           name: product.name,
           imageUrl: product.images?.[0]?.url ?? null,
-          unitPrice: product.price,
+          unitPrice,
           quantity: qty,
         }),
       );
@@ -185,39 +214,65 @@ export class OrdersService {
 
     const grandTotal = round2(payable - giftCardTotal);
 
-    if (couponId) await this.coupons.markUsed(couponId);
-    for (const item of orderItems) {
-      if (item.itemType === OrderItemType.PRODUCT && item.productId) {
-        await this.products.decrement({ id: item.productId }, 'stock', item.quantity);
-      }
-    }
+    /*
+     * Stok dusumu ve siparis kaydi tek islemde (transaction) yapilir.
+     * Stok, kosullu UPDATE ile atomik dusulur: ayni anda gelen iki siparis
+     * son urunu birden satamaz, yetmeyen ilk kalemde islem geri alinir.
+     */
+    const order = await this.dataSource.transaction(async (manager) => {
+      for (const item of orderItems) {
+        if (item.itemType !== OrderItemType.PRODUCT || !item.productId) continue;
 
-    const order = await this.orders.save(
-      this.orders.create({
-        orderNo: this.generateOrderNo(),
-        userId: input.userId ?? null,
-        email: input.email.trim().toLowerCase(),
-        status: OrderStatus.PENDING,
-        paymentMethod: input.paymentMethod,
-        paymentStatus: PaymentStatus.PENDING,
-        subtotal,
-        discountTotal,
-        giftCardTotal,
-        shippingTotal,
-        grandTotal,
-        couponId,
-        couponCode,
-        giftCardId,
-        shippingName: input.shippingName,
-        shippingPhone: input.shippingPhone,
-        shippingCity: input.shippingCity,
-        shippingDistrict: input.shippingDistrict,
-        shippingAddress: input.shippingAddress,
-        shippingZip: input.shippingZip ?? null,
-        note: input.note ?? null,
-        items: orderItems,
-      }),
-    );
+        // TypeORM'un query() metodu [satirlar, etkilenenSayisi] dondurur;
+        // stok yetmediyse kosul tutmaz ve etkilenen satir 0 olur.
+        const [, affected] = (await (item.variantId
+          ? manager.query(
+              'UPDATE product_variants SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING id',
+              [item.quantity, item.variantId],
+            )
+          : manager.query(
+              'UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING id',
+              [item.quantity, item.productId],
+            ))) as [unknown[], number];
+
+        if (!affected) {
+          throw new BadRequestException(
+            `"${item.name}${item.variantName ? ` — ${item.variantName}` : ''}" için stok az önce tükendi. Sepetinizi güncelleyip tekrar deneyin.`,
+          );
+        }
+      }
+
+      if (couponId) {
+        await manager.increment(Coupon, { id: couponId }, 'usedCount', 1);
+      }
+
+      return manager.save(
+        manager.create(Order, {
+          orderNo: this.generateOrderNo(),
+          userId: input.userId ?? null,
+          email: input.email.trim().toLowerCase(),
+          status: OrderStatus.PENDING,
+          paymentMethod: input.paymentMethod,
+          paymentStatus: PaymentStatus.PENDING,
+          subtotal,
+          discountTotal,
+          giftCardTotal,
+          shippingTotal,
+          grandTotal,
+          couponId,
+          couponCode,
+          giftCardId,
+          shippingName: input.shippingName,
+          shippingPhone: input.shippingPhone,
+          shippingCity: input.shippingCity,
+          shippingDistrict: input.shippingDistrict,
+          shippingAddress: input.shippingAddress,
+          shippingZip: input.shippingZip ?? null,
+          note: input.note ?? null,
+          items: orderItems,
+        }),
+      );
+    });
 
     // Tamamen hediye kartiyla odendiyse odeme tamamlanmis sayilir
     if (grandTotal === 0 && giftCardTotal > 0) {
@@ -314,10 +369,14 @@ export class OrdersService {
     if (!order) throw new NotFoundException('Sipariş bulunamadı.');
     if (order.status === OrderStatus.CANCELLED) return order;
 
-    // Stok iadesi
+    // Stok iadesi (varyantli urunlerde varyant stogu geri verilir)
     for (const item of order.items) {
       if (item.itemType === OrderItemType.PRODUCT && item.productId) {
-        await this.products.increment({ id: item.productId }, 'stock', item.quantity);
+        if (item.variantId) {
+          await this.variants.increment({ id: item.variantId }, 'stock', item.quantity);
+        } else {
+          await this.products.increment({ id: item.productId }, 'stock', item.quantity);
+        }
       }
       // Satin alinan hediye kartlarini iptal et
       if (item.itemType === OrderItemType.GIFT_CARD && item.boughtGiftCardId) {

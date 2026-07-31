@@ -17,7 +17,13 @@ import {
   Truck,
 } from "lucide-react"
 import { toast } from "sonner"
-import { api, imageUrl, type ProductDetail } from "@/lib/api"
+import {
+  activeVariants,
+  api,
+  imageUrl,
+  type ProductDetail,
+  type ProductVariant,
+} from "@/lib/api"
 import { formatDate, formatPrice } from "@/lib/format"
 import { useAuth, useCart, useFavorites } from "@/components/providers"
 import { ProductCard } from "@/components/site/product-card"
@@ -109,6 +115,7 @@ export function ProductDetailClient({ slug }: { slug: string }) {
   const [notFound, setNotFound] = useState(false)
   const [activeImage, setActiveImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
+  const [variant, setVariant] = useState<ProductVariant | null>(null)
   const [tab, setTab] = useState<"desc" | "detail" | "care" | "shipping">("desc")
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewComment, setReviewComment] = useState("")
@@ -118,9 +125,12 @@ export function ProductDetailClient({ slug }: { slug: string }) {
     setProduct(null)
     setActiveImage(0)
     setQuantity(1)
+    setVariant(null)
     api<ProductDetail>(`/products/${slug}`, { auth: false })
       .then((p) => {
         setProduct(p)
+        const options = activeVariants(p)
+        setVariant(options.find((v) => v.stock > 0) ?? options[0] ?? null)
         recordView(p)
       })
       .catch(() => setNotFound(true))
@@ -154,12 +164,23 @@ export function ProductDetailClient({ slug }: { slug: string }) {
   }
 
   const fav = isFavorite(product.id)
-  const outOfStock = product.stock <= 0
+  const options = activeVariants(product)
+  const hasVariants = options.length > 0
+  const price = variant ? variant.price : product.price
+  const compareAt = variant ? variant.compareAtPrice : product.compareAtPrice
+  const stock = variant ? variant.stock : product.stock
+  const outOfStock = hasVariants ? !variant || variant.stock <= 0 : product.stock <= 0
   const images = product.images?.length ? product.images : [{ id: "ph", url: null, alt: null, sortOrder: 0 }]
 
   const addToCart = () => {
-    addProduct(product, quantity)
-    toast.success(`${product.name} (${quantity} adet) sepete eklendi`)
+    if (hasVariants && !variant) {
+      toast.error("Lütfen bir seçenek belirleyin.")
+      return
+    }
+    addProduct(product, quantity, variant)
+    toast.success(
+      `${product.name}${variant ? ` — ${variant.name}` : ""} (${quantity} adet) sepete eklendi`,
+    )
   }
 
   const submitReview = async (e: React.FormEvent) => {
@@ -211,9 +232,9 @@ export function ProductDetailClient({ slug }: { slug: string }) {
               alt={product.name}
               className="aspect-square w-full object-cover"
             />
-            {product.compareAtPrice && product.compareAtPrice > product.price && (
+            {compareAt && compareAt > price && (
               <span className="absolute left-4 top-4 rounded-sm bg-accent px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-accent-foreground">
-                %{Math.round((1 - product.price / product.compareAtPrice) * 100)} indirim
+                %{Math.round((1 - price / compareAt) * 100)} indirim
               </span>
             )}
           </div>
@@ -257,22 +278,59 @@ export function ProductDetailClient({ slug }: { slug: string }) {
           )}
 
           <div className="mt-5 flex items-baseline gap-3">
-            <span className="text-3xl font-bold">{formatPrice(product.price)}</span>
-            {product.compareAtPrice && product.compareAtPrice > product.price && (
+            <span className="text-3xl font-bold">{formatPrice(price)}</span>
+            {compareAt && compareAt > price && (
               <span className="text-lg text-muted-foreground line-through">
-                {formatPrice(product.compareAtPrice)}
+                {formatPrice(compareAt)}
               </span>
             )}
           </div>
 
           <p className="mt-6 leading-relaxed text-muted-foreground">{product.description}</p>
 
+          {/* Seçenekler */}
+          {hasVariants && (
+            <div className="mt-6">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Seçenek
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {options.map((v) => {
+                  const selected = variant?.id === v.id
+                  const soldOut = v.stock <= 0
+                  return (
+                    <button
+                      key={v.id}
+                      onClick={() => {
+                        setVariant(v)
+                        setQuantity(1)
+                      }}
+                      disabled={soldOut}
+                      className={cn(
+                        "rounded-md border px-4 py-2.5 text-sm transition-colors",
+                        selected
+                          ? "border-accent bg-accent/10 font-semibold text-accent"
+                          : "border-border hover:border-accent",
+                        soldOut && "cursor-not-allowed text-muted-foreground line-through opacity-50",
+                      )}
+                    >
+                      {v.name}
+                      <span className="ml-2 text-xs opacity-80">{formatPrice(v.price)}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Stok durumu */}
           <div className="mt-6 flex items-center gap-2 text-sm">
             {outOfStock ? (
-              <span className="font-medium text-destructive">Stokta yok</span>
-            ) : product.stock <= 5 ? (
-              <span className="font-medium text-accent">Son {product.stock} ürün!</span>
+              <span className="font-medium text-destructive">
+                {hasVariants ? "Bu seçenek tükendi" : "Stokta yok"}
+              </span>
+            ) : stock <= 5 ? (
+              <span className="font-medium text-accent">Son {stock} ürün!</span>
             ) : (
               <span className="flex items-center gap-1.5 font-medium text-green-700">
                 <Check className="h-4 w-4" /> Stokta
@@ -292,7 +350,7 @@ export function ProductDetailClient({ slug }: { slug: string }) {
               </button>
               <span className="w-10 text-center text-sm font-semibold">{quantity}</span>
               <button
-                onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                onClick={() => setQuantity((q) => Math.min(stock, q + 1))}
                 className="flex h-full w-11 items-center justify-center transition-colors hover:text-accent"
                 aria-label="Artır"
               >
@@ -322,7 +380,7 @@ export function ProductDetailClient({ slug }: { slug: string }) {
           </div>
 
           {/* Stok bildirimi */}
-          {outOfStock && <StockAlertForm productId={product.id} />}
+          {outOfStock && !hasVariants && <StockAlertForm productId={product.id} />}
 
           {/* Güven şeridi */}
           <div className="mt-8 grid gap-3 rounded-md border border-border bg-card p-4 text-xs text-muted-foreground sm:grid-cols-3">

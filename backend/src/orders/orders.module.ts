@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { GiftCard, Order, OrderItem, Product } from '../entities';
+import { Coupon, GiftCard, Order, OrderItem, Product, ProductVariant } from '../entities';
 import { CouponsModule } from '../coupons/coupons.module';
 import { GiftCardsModule } from '../gift-cards/gift-cards.module';
 import { SettingsModule } from '../settings/settings.module';
@@ -10,7 +10,7 @@ import { AdminOrdersController } from './admin-orders.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, Product, GiftCard]),
+    TypeOrmModule.forFeature([Order, OrderItem, Product, ProductVariant, GiftCard, Coupon]),
     CouponsModule,
     GiftCardsModule,
     SettingsModule,

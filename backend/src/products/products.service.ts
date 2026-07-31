@@ -29,6 +29,7 @@ export class ProductsService {
     const qb = this.products
       .createQueryBuilder('p')
       .leftJoinAndSelect('p.images', 'img')
+      .leftJoinAndSelect('p.variants', 'variant')
       .leftJoinAndSelect('p.category', 'cat')
       .orderBy('p.createdAt', 'DESC')
       .addOrderBy('img.sortOrder', 'ASC');
@@ -74,8 +75,8 @@ export class ProductsService {
   async bySlug(slug: string, track = true) {
     const product = await this.products.findOne({
       where: { slug, isActive: true },
-      relations: { images: true, category: true },
-      order: { images: { sortOrder: 'ASC' } },
+      relations: { images: true, category: true, variants: true },
+      order: { images: { sortOrder: 'ASC' }, variants: { sortOrder: 'ASC' } },
     });
     if (!product) throw new NotFoundException('Ürün bulunamadı.');
     // Tiklanma sayaci (SSR metadata fetch'leri track=0 ile gelir, sayilmaz)

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Banknote,
   CreditCard,
@@ -16,6 +16,7 @@ import { toast } from "sonner"
 import { useAuth, useCart } from "@/components/providers"
 import { api, type Address, type StoreSettings } from "@/lib/api"
 import { formatPrice } from "@/lib/format"
+import { isValidPhone, phoneInputProps, sanitizeName, sanitizePhone, sanitizeZip } from "@/lib/input"
 import { cn } from "@/lib/utils"
 
 type PayMethod = "BANK_TRANSFER" | "COD" | "CARD"
@@ -48,8 +49,12 @@ export default function CheckoutPage() {
 
   const hasProducts = items.length > 0
   const hasGiftCardsInCart = giftCards.length > 0
+  // Siparis tamamlandiginda sepet temizlenir; bu bayrak bos-sepet
+  // yonlendirmesinin basari sayfasini golgelemesini engeller
+  const completedRef = useRef(false)
 
   useEffect(() => {
+    if (completedRef.current) return
     if (items.length === 0 && giftCards.length === 0) router.replace("/sepet")
   }, [items.length, giftCards.length, router])
 
@@ -134,6 +139,10 @@ export default function CheckoutPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isValidPhone(form.shippingPhone)) {
+      toast.error("Geçerli bir telefon numarası girin (05xx xxx xx xx).")
+      return
+    }
     setBusy(true)
     try {
       const res = await api<{
@@ -145,7 +154,11 @@ export default function CheckoutPage() {
         method: "POST",
         body: JSON.stringify({
           ...form,
-          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+          items: items.map((i) => ({
+            productId: i.productId,
+            variantId: i.variantId ?? undefined,
+            quantity: i.quantity,
+          })),
           giftCardItems: giftCards.map((g) => ({
             amount: g.amount,
             recipientName: g.recipientName,
@@ -157,6 +170,7 @@ export default function CheckoutPage() {
           paymentMethod: payMethod,
         }),
       })
+      completedRef.current = true
       sessionStorage.setItem(
         "miamiss_last_order",
         JSON.stringify({ ...res, email: form.email }),
@@ -228,8 +242,11 @@ export default function CheckoutPage() {
                 <input
                   required
                   minLength={3}
+                  autoComplete="name"
                   value={form.shippingName}
-                  onChange={(e) => setForm({ ...form, shippingName: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, shippingName: sanitizeName(e.target.value) })
+                  }
                   className={input}
                 />
               </div>
@@ -237,12 +254,12 @@ export default function CheckoutPage() {
                 <label className="mb-1.5 block text-xs font-semibold">Telefon *</label>
                 <input
                   required
-                  type="tel"
-                  minLength={10}
+                  {...phoneInputProps}
                   value={form.shippingPhone}
-                  onChange={(e) => setForm({ ...form, shippingPhone: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, shippingPhone: sanitizePhone(e.target.value) })
+                  }
                   className={input}
-                  placeholder="05xx xxx xx xx"
                 />
               </div>
               <div>
@@ -278,9 +295,12 @@ export default function CheckoutPage() {
               <div>
                 <label className="mb-1.5 block text-xs font-semibold">Posta Kodu</label>
                 <input
+                  inputMode="numeric"
+                  maxLength={5}
                   value={form.shippingZip}
-                  onChange={(e) => setForm({ ...form, shippingZip: e.target.value })}
+                  onChange={(e) => setForm({ ...form, shippingZip: sanitizeZip(e.target.value) })}
                   className={input}
+                  placeholder="34000"
                 />
               </div>
               <div>
@@ -375,9 +395,11 @@ export default function CheckoutPage() {
 
             <ul className="mt-4 space-y-2 border-b border-border pb-4 text-sm">
               {items.map((i) => (
-                <li key={i.productId} className="flex justify-between gap-2">
+                <li key={i.key} className="flex justify-between gap-2">
                   <span className="text-muted-foreground">
-                    {i.name} <span className="text-xs">× {i.quantity}</span>
+                    {i.name}
+                    {i.variantName && <span className="text-accent"> ({i.variantName})</span>}{" "}
+                    <span className="text-xs">× {i.quantity}</span>
                   </span>
                   <span className="shrink-0 font-medium">{formatPrice(i.price * i.quantity)}</span>
                 </li>

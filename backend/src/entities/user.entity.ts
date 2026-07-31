@@ -35,6 +35,17 @@ export class User {
   @Column({ type: 'enum', enum: Role, default: Role.CUSTOMER })
   role: Role;
 
+  /* Sifre sifirlama (token hash'lenmis olarak saklanir) */
+  @Column({ type: 'varchar', nullable: true, select: false })
+  resetTokenHash: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true, select: false })
+  resetTokenExpiresAt: Date | null;
+
+  /** Pazarlama e-postalarina izin */
+  @Column({ default: true })
+  acceptsMarketing: boolean;
+
   @OneToMany(() => Address, (a) => a.user)
   addresses: Address[];
 

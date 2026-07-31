@@ -30,6 +30,10 @@ class OrderItemDto {
   @IsString()
   productId: string;
 
+  @IsOptional()
+  @IsString()
+  variantId?: string;
+
   @Type(() => Number)
   @IsInt()
   @Min(1)

@@ -1,24 +1,25 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useCallback, useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Loader2, PackageSearch } from "lucide-react"
 import { toast } from "sonner"
 import { api, type Order } from "@/lib/api"
 import { OrderCard } from "@/components/site/order-card"
 
-export default function OrderTrackPage() {
-  const [orderNo, setOrderNo] = useState("")
-  const [email, setEmail] = useState("")
+function OrderTrackContent() {
+  const params = useSearchParams()
+  const [orderNo, setOrderNo] = useState(params.get("orderNo")?.toUpperCase() ?? "")
+  const [email, setEmail] = useState(params.get("email") ?? "")
   const [busy, setBusy] = useState(false)
   const [order, setOrder] = useState<Order | null>(null)
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const track = useCallback(async (no: string, mail: string) => {
     setBusy(true)
     setOrder(null)
     try {
       const res = await api<Order>(
-        `/orders/track?orderNo=${encodeURIComponent(orderNo)}&email=${encodeURIComponent(email)}`,
+        `/orders/track?orderNo=${encodeURIComponent(no)}&email=${encodeURIComponent(mail)}`,
         { auth: false },
       )
       setOrder(res)
@@ -27,6 +28,19 @@ export default function OrderTrackPage() {
     } finally {
       setBusy(false)
     }
+  }, [])
+
+  // Takip linkiyle gelindiyse otomatik sorgula
+  useEffect(() => {
+    const no = params.get("orderNo")
+    const mail = params.get("email")
+    if (no && mail) void track(no, mail)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await track(orderNo, email)
   }
 
   return (
@@ -78,5 +92,13 @@ export default function OrderTrackPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function OrderTrackPage() {
+  return (
+    <Suspense>
+      <OrderTrackContent />
+    </Suspense>
   )
 }

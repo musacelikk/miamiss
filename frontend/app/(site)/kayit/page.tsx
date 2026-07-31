@@ -6,6 +6,7 @@ import { useState } from "react"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/components/providers"
+import { isValidPhone, phoneInputProps, sanitizeName, sanitizePhone } from "@/lib/input"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -15,6 +16,10 @@ export default function RegisterPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (form.phone && !isValidPhone(form.phone)) {
+      toast.error("Geçerli bir telefon numarası girin (05xx xxx xx xx).")
+      return
+    }
     setBusy(true)
     try {
       await register({
@@ -51,8 +56,9 @@ export default function RegisterPage() {
             <input
               required
               minLength={2}
+              autoComplete="name"
               value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              onChange={(e) => setForm({ ...form, name: sanitizeName(e.target.value) })}
               className={input}
             />
           </div>
@@ -69,11 +75,10 @@ export default function RegisterPage() {
           <div>
             <label className="mb-1.5 block text-xs font-semibold">Telefon (isteğe bağlı)</label>
             <input
-              type="tel"
+              {...phoneInputProps}
               value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              onChange={(e) => setForm({ ...form, phone: sanitizePhone(e.target.value) })}
               className={input}
-              placeholder="05xx xxx xx xx"
             />
           </div>
           <div>

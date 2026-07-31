@@ -20,6 +20,7 @@ import { toast } from "sonner"
 import { Brand } from "@/components/brand"
 import { api, type StoreSettings } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { sanitizeName } from "@/lib/input"
 
 const TABS = [
   { key: "hikayemiz", label: "Hikâyemiz", icon: BookOpen },
@@ -187,8 +188,9 @@ function ContactTab() {
             <label className="mb-1.5 block text-xs font-semibold">Adınız *</label>
             <input
               required
+              autoComplete="name"
               value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              onChange={(e) => setForm({ ...form, name: sanitizeName(e.target.value) })}
               className={input}
             />
           </div>

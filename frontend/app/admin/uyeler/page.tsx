@@ -8,6 +8,7 @@ import { api } from "@/lib/api"
 import { formatDate, formatPrice } from "@/lib/format"
 import { useAuth } from "@/components/providers"
 import { cn } from "@/lib/utils"
+import { phoneInputProps, sanitizePhone } from "@/lib/input"
 
 interface Member {
   id: string
@@ -164,8 +165,9 @@ export default function AdminUsersPage() {
               <div>
                 <label className="mb-1.5 block text-xs font-semibold">Telefon</label>
                 <input
+                  {...phoneInputProps}
                   value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  onChange={(e) => setForm({ ...form, phone: sanitizePhone(e.target.value) })}
                   className={input}
                 />
               </div>

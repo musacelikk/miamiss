@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Heart, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { useCart, useFavorites } from "@/components/providers"
-import { imageUrl, type Product } from "@/lib/api"
+import { imageUrl, productDisplay, type Product } from "@/lib/api"
 import { formatPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -14,9 +14,12 @@ export function ProductCard({ product }: { product: Product }) {
   const fav = isFavorite(product.id)
   const cover = product.images?.[0]?.url
   const hover = product.images?.[1]?.url
-  const outOfStock = product.stock <= 0
+  const { hasVariants, minPrice, maxPrice, compareAtPrice, stock } = productDisplay(product)
+  const outOfStock = stock <= 0
 
+  // Varyantli urunlerde secim gerektigi icin hizli ekleme yerine detaya yonlendirilir
   const add = (e: React.MouseEvent) => {
+    if (hasVariants) return
     e.preventDefault()
     if (outOfStock) return
     addProduct(product)
@@ -51,9 +54,9 @@ export function ProductCard({ product }: { product: Product }) {
 
         {/* Rozetler */}
         <div className="absolute left-3 top-3 flex flex-col gap-1.5">
-          {product.compareAtPrice && product.compareAtPrice > product.price && (
+          {compareAtPrice && compareAtPrice > minPrice && (
             <span className="rounded-sm bg-accent px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-accent-foreground">
-              %{Math.round((1 - product.price / product.compareAtPrice) * 100)} indirim
+              %{Math.round((1 - minPrice / compareAtPrice) * 100)} indirim
             </span>
           )}
           {outOfStock && (
@@ -100,10 +103,15 @@ export function ProductCard({ product }: { product: Product }) {
           {product.name}
         </h3>
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-semibold">{formatPrice(product.price)}</span>
-          {product.compareAtPrice && product.compareAtPrice > product.price && (
+          <span className="text-sm font-semibold">
+            {hasVariants && maxPrice > minPrice && (
+              <span className="mr-1 text-xs font-normal text-muted-foreground">başlangıç</span>
+            )}
+            {formatPrice(minPrice)}
+          </span>
+          {compareAtPrice && compareAtPrice > minPrice && (
             <span className="text-xs text-muted-foreground line-through">
-              {formatPrice(product.compareAtPrice)}
+              {formatPrice(compareAtPrice)}
             </span>
           )}
         </div>

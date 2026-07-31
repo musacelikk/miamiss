@@ -14,6 +14,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   IsArray,
+  ValidateNested,
   IsBoolean,
   IsNumber,
   IsOptional,
@@ -22,7 +23,15 @@ import {
   MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Category, Product, ProductImage, Review, Role, StockAlert } from '../entities';
+import {
+  Category,
+  Product,
+  ProductImage,
+  ProductVariant,
+  Review,
+  Role,
+  StockAlert,
+} from '../entities';
 import { CurrentUser, JwtAuthGuard, Roles, RolesGuard, type AuthUser } from '../auth/guards';
 import { ProductsService } from './products.service';
 import { MailService } from '../mail/mail.service';
@@ -40,6 +49,32 @@ export function slugify(text: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+class VariantDto {
+  @IsString()
+  @MinLength(1)
+  name: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  price: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  compareAtPrice?: number | null;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  stock: number;
+
+  @IsOptional()
+  @IsString()
+  sku?: string;
 }
 
 class ProductDto {
@@ -140,6 +175,13 @@ class ProductDto {
   @IsOptional()
   @IsArray()
   imageUrls?: string[];
+
+  /** Bos/verilmemis ise urun varyantsiz (tek fiyat + tek stok) satilir */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => VariantDto)
+  variants?: VariantDto[];
 }
 
 class CategoryDto {
@@ -167,6 +209,7 @@ export class AdminProductsController {
     @InjectRepository(ProductImage) private readonly images: Repository<ProductImage>,
     @InjectRepository(Category) private readonly categories: Repository<Category>,
     @InjectRepository(Review) private readonly reviews: Repository<Review>,
+    @InjectRepository(ProductVariant) private readonly variants: Repository<ProductVariant>,
     @InjectRepository(StockAlert) private readonly stockAlerts: Repository<StockAlert>,
     private readonly mail: MailService,
     private readonly logs: LogsService,
@@ -195,7 +238,7 @@ export class AdminProductsController {
   @Post('products')
   async create(@Body() dto: ProductDto, @CurrentUser() admin: AuthUser) {
     this.logAdmin(admin!, 'product.create', `Ürün eklendi: ${dto.name}`);
-    const { imageUrls, ...data } = dto;
+    const { imageUrls, variants, ...data } = dto;
     let slug = slugify(data.name);
     const clash = await this.products.findOne({ where: { slug } });
     if (clash) slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
@@ -215,7 +258,32 @@ export class AdminProductsController {
         ),
       );
     }
-    return this.products.findOne({ where: { id: product.id }, relations: { images: true } });
+    await this.syncVariants(product.id, variants);
+    return this.products.findOne({
+      where: { id: product.id },
+      relations: { images: true, variants: true },
+    });
+  }
+
+  /** Varyant listesini bastan yazar. undefined ise dokunmaz, bos dizi ise hepsini siler. */
+  private async syncVariants(productId: string, variants?: VariantDto[]) {
+    if (!variants) return;
+    await this.variants.delete({ productId });
+    if (!variants.length) return;
+    await this.variants.save(
+      variants.map((v, i) =>
+        this.variants.create({
+          productId,
+          name: v.name.trim(),
+          price: v.price,
+          compareAtPrice: v.compareAtPrice ?? null,
+          stock: v.stock,
+          sku: v.sku?.trim() || null,
+          sortOrder: i,
+          isActive: true,
+        }),
+      ),
+    );
   }
 
   @Patch('products/:id')
@@ -229,7 +297,7 @@ export class AdminProductsController {
     this.logAdmin(admin!, 'product.update', `Ürün güncellendi: ${product.name}`);
 
     const wasOutOfStock = product.stock <= 0;
-    const { imageUrls, ...data } = dto;
+    const { imageUrls, variants, ...data } = dto;
     Object.assign(product, data, {
       compareAtPrice: data.compareAtPrice ?? null,
       shippingFee: data.shippingFee ?? null,
@@ -259,7 +327,11 @@ export class AdminProductsController {
         );
       }
     }
-    return this.products.findOne({ where: { id }, relations: { images: true } });
+    await this.syncVariants(id, variants);
+    return this.products.findOne({
+      where: { id },
+      relations: { images: true, variants: true },
+    });
   }
 
   @Delete('products/:id')

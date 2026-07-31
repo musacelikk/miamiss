@@ -19,6 +19,7 @@ import { useAuth } from "@/components/providers"
 import { api, type Address, type Order } from "@/lib/api"
 import { OrderCard } from "@/components/site/order-card"
 import { cn } from "@/lib/utils"
+import { isValidPhone, phoneInputProps, sanitizeName, sanitizePhone, sanitizeZip } from "@/lib/input"
 
 type Tab = "orders" | "addresses" | "profile"
 
@@ -75,6 +76,10 @@ export default function AccountPage() {
 
   const saveAddress = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isValidPhone(addressForm.phone)) {
+      toast.error("Geçerli bir telefon numarası girin (05xx xxx xx xx).")
+      return
+    }
     setBusy(true)
     try {
       const { id, ...data } = addressForm
@@ -248,15 +253,20 @@ export default function AccountPage() {
                   <input
                     required
                     placeholder="Ad Soyad"
+                    autoComplete="name"
                     value={addressForm.fullName}
-                    onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
+                    onChange={(e) =>
+                      setAddressForm({ ...addressForm, fullName: sanitizeName(e.target.value) })
+                    }
                     className={input}
                   />
                   <input
                     required
-                    placeholder="Telefon"
+                    {...phoneInputProps}
                     value={addressForm.phone}
-                    onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
+                    onChange={(e) =>
+                      setAddressForm({ ...addressForm, phone: sanitizePhone(e.target.value) })
+                    }
                     className={input}
                   />
                   <div className="grid grid-cols-2 gap-4">
@@ -285,8 +295,12 @@ export default function AccountPage() {
                   />
                   <input
                     placeholder="Posta kodu (isteğe bağlı)"
+                    inputMode="numeric"
+                    maxLength={5}
                     value={addressForm.zip}
-                    onChange={(e) => setAddressForm({ ...addressForm, zip: e.target.value })}
+                    onChange={(e) =>
+                      setAddressForm({ ...addressForm, zip: sanitizeZip(e.target.value) })
+                    }
                     className={input}
                   />
                   <label className="flex items-center gap-2 text-sm">
@@ -394,16 +408,22 @@ export default function AccountPage() {
                 <label className="mb-1.5 block text-xs font-semibold">Ad Soyad</label>
                 <input
                   required
+                  autoComplete="name"
                   value={profileForm.name}
-                  onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                  onChange={(e) =>
+                    setProfileForm({ ...profileForm, name: sanitizeName(e.target.value) })
+                  }
                   className={input}
                 />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold">Telefon</label>
                 <input
+                  {...phoneInputProps}
                   value={profileForm.phone}
-                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                  onChange={(e) =>
+                    setProfileForm({ ...profileForm, phone: sanitizePhone(e.target.value) })
+                  }
                   className={input}
                 />
               </div>

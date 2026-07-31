@@ -3,6 +3,15 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 
+/** Kullanici metnini e-posta HTML'ine gomerken kacisla (XSS/bozulma onlemi). */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 /**
  * SMTP_* env degiskenleri doluysa gercek e-posta gonderir,
  * bos ise yalnizca loglar (gelistirme modu).
@@ -160,6 +169,69 @@ export class MailService {
          <span style="font-family:monospace;letter-spacing:1px;background:#f7f4ee;border:1px dashed #a5875c;padding:6px 12px;border-radius:4px;">${card.code}</span>
          — <strong>${card.amount.toLocaleString('tr-TR')} ₺</strong></p>
        <p style="font-size:13px;">Kodu <a href="${this.siteUrl}" style="color:#a5875c;">miamisuhome.com</a> üzerinde ödeme adımında kullanabilirsiniz. 1 yıl geçerlidir.</p>`,
+    );
+  }
+
+  /** Destek kutusuna dusen yeni mesaji isletmeciye haber verir. */
+  supportNotifyAdmin(ticket: {
+    ticketNo: string;
+    subject: string;
+    name: string;
+    email: string;
+    orderNo?: string | null;
+    body: string;
+  }): void {
+    const to = process.env.SUPPORT_EMAIL;
+    if (!to) {
+      this.logger.warn('SUPPORT_EMAIL tanımlı değil, destek bildirimi gönderilemedi');
+      return;
+    }
+    const adminUrl = process.env.ADMIN_URL ?? 'https://admin.miamisuhome.com';
+    this.send(
+      to,
+      `Yeni destek mesajı — ${ticket.ticketNo}`,
+      `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Yeni Destek Mesajı</h2>
+       <p style="font-size:14px;margin:0 0 4px;"><strong>${ticket.subject}</strong></p>
+       <p style="font-size:13px;color:#9b9184;margin:0 0 14px;">
+         ${ticket.name} · ${ticket.email}${ticket.orderNo ? ` · Sipariş: ${ticket.orderNo}` : ''}
+         · Talep No: ${ticket.ticketNo}
+       </p>
+       <div style="background:#f7f4ee;border-radius:6px;padding:16px;font-size:14px;white-space:pre-wrap;">${escapeHtml(ticket.body)}</div>
+       <p style="margin:20px 0 0;"><a href="${adminUrl}/destek"
+          style="background:#2e2925;color:#fff;padding:11px 24px;border-radius:4px;text-decoration:none;font-size:14px;">Panelden Yanıtla</a></p>`,
+    );
+  }
+
+  /** Isletmecinin yanitini musteriye bildirir. */
+  supportReplyToCustomer(
+    email: string,
+    ticketNo: string,
+    subject: string,
+    body: string,
+  ): void {
+    this.send(
+      email,
+      `Destek talebinize yanıt — ${ticketNo}`,
+      `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Talebinize Yanıt Verdik</h2>
+       <p style="font-size:13px;color:#9b9184;margin:0 0 14px;">${subject} · Talep No: ${ticketNo}</p>
+       <div style="background:#f7f4ee;border-radius:6px;padding:16px;font-size:14px;white-space:pre-wrap;">${escapeHtml(body)}</div>
+       <p style="font-size:13px;margin-top:16px;">
+         Yanıtlamak için <a href="${this.siteUrl}/destek" style="color:#a5875c;">destek sayfanızı</a> ziyaret edebilirsiniz.
+       </p>`,
+    );
+  }
+
+  passwordReset(email: string, name: string, resetUrl: string): void {
+    this.send(
+      email,
+      'Şifre sıfırlama talebiniz',
+      `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Şifrenizi Sıfırlayın</h2>
+       <p style="font-size:14px;">Merhaba ${name}, hesabınız için şifre sıfırlama talebi aldık.
+       Aşağıdaki butona tıklayarak yeni şifrenizi belirleyebilirsiniz.</p>
+       <p style="margin:22px 0;"><a href="${resetUrl}"
+          style="background:#2e2925;color:#fff;padding:12px 26px;border-radius:4px;text-decoration:none;font-size:14px;">Yeni Şifre Belirle</a></p>
+       <p style="font-size:12px;color:#9b9184;">Bu bağlantı <strong>1 saat</strong> geçerlidir.
+       Bu talebi siz yapmadıysanız bu e-postayı yok sayabilirsiniz, şifreniz değişmez.</p>`,
     );
   }
 

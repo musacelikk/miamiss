@@ -46,6 +46,7 @@ const EMPTY = {
   isFeatured: false,
   categoryId: "",
   imageUrls: [] as string[],
+  variants: [] as { name: string; price: string; compareAtPrice: string; stock: string; sku: string }[],
 }
 
 type FormState = typeof EMPTY & { id?: string }
@@ -101,6 +102,15 @@ export default function AdminProductsPage() {
       imageUrls: [...(p.images ?? [])]
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .map((i) => i.url),
+      variants: [...(p.variants ?? [])]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((v) => ({
+          name: v.name,
+          price: String(v.price),
+          compareAtPrice: v.compareAtPrice != null ? String(v.compareAtPrice) : "",
+          stock: String(v.stock),
+          sku: v.sku ?? "",
+        })),
     })
 
   const upload = async (files: FileList | null) => {
@@ -146,6 +156,15 @@ export default function AdminProductsPage() {
         isFeatured: form.isFeatured,
         categoryId: form.categoryId || undefined,
         imageUrls: form.imageUrls,
+        variants: form.variants
+          .filter((v) => v.name.trim())
+          .map((v) => ({
+            name: v.name.trim(),
+            price: parseFloat(v.price) || 0,
+            compareAtPrice: v.compareAtPrice ? parseFloat(v.compareAtPrice) : undefined,
+            stock: parseInt(v.stock, 10) || 0,
+            sku: v.sku.trim() || undefined,
+          })),
       }
       if (form.id) {
         await api(`/admin/products/${form.id}`, { method: "PATCH", body: JSON.stringify(payload) })
@@ -437,6 +456,113 @@ export default function AdminProductsPage() {
                     kargo limiti yine uygulanır.
                   </p>
                 </div>
+              </div>
+
+              {/* Varyantlar */}
+              <div className="rounded-md border border-dashed border-accent/40 bg-secondary/30 p-4 sm:col-span-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    Seçenekler / Varyantlar
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        variants: [
+                          ...form.variants,
+                          { name: "", price: form.price || "", compareAtPrice: "", stock: "0", sku: "" },
+                        ],
+                      })
+                    }
+                    className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:border-accent hover:text-accent"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Seçenek Ekle
+                  </button>
+                </div>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                  Boş bırakırsan ürün <strong>tek fiyat ve tek stokla</strong> satılır. Seçenek
+                  eklersen (Büyük / Küçük / İkili Set gibi) müşteri seçim yapar; fiyat ve stok
+                  her seçenek için ayrı tutulur ve yukarıdaki fiyat/stok alanları kullanılmaz.
+                </p>
+
+                {form.variants.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <div className="hidden gap-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[1fr_90px_90px_70px_90px_32px]">
+                      <span>Seçenek Adı</span>
+                      <span>Fiyat</span>
+                      <span>İndirimsiz</span>
+                      <span>Stok</span>
+                      <span>Stok Kodu</span>
+                      <span />
+                    </div>
+                    {form.variants.map((v, i) => {
+                      const setVariant = (patch: Partial<typeof v>) => {
+                        const variants = [...form.variants]
+                        variants[i] = { ...v, ...patch }
+                        setForm({ ...form, variants })
+                      }
+                      return (
+                        <div
+                          key={i}
+                          className="grid gap-2 sm:grid-cols-[1fr_90px_90px_70px_90px_32px] sm:items-center"
+                        >
+                          <input
+                            value={v.name}
+                            onChange={(e) => setVariant({ name: e.target.value })}
+                            placeholder="Büyük (18 cm)"
+                            className={input}
+                          />
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={v.price}
+                            onChange={(e) => setVariant({ price: e.target.value })}
+                            placeholder="Fiyat"
+                            className={input}
+                          />
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={v.compareAtPrice}
+                            onChange={(e) => setVariant({ compareAtPrice: e.target.value })}
+                            placeholder="—"
+                            className={input}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={v.stock}
+                            onChange={(e) => setVariant({ stock: e.target.value })}
+                            placeholder="Stok"
+                            className={input}
+                          />
+                          <input
+                            value={v.sku}
+                            onChange={(e) => setVariant({ sku: e.target.value })}
+                            placeholder="—"
+                            className={input}
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm({
+                                ...form,
+                                variants: form.variants.filter((_, j) => j !== i),
+                              })
+                            }
+                            className="flex h-9 w-8 items-center justify-center rounded text-muted-foreground hover:text-destructive"
+                            aria-label="Seçeneği sil"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Görseller */}

@@ -7,8 +7,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { createHash, randomBytes } from 'crypto';
+import { MoreThan } from 'typeorm';
 import { Role, User } from '../entities';
 import { LogsService } from '../logs/logs.service';
+import { MailService } from '../mail/mail.service';
 
 export interface JwtPayload {
   sub: string;
@@ -22,6 +25,7 @@ export class AuthService {
     @InjectRepository(User) private readonly users: Repository<User>,
     private readonly jwt: JwtService,
     private readonly logs: LogsService,
+    private readonly mail: MailService,
   ) {}
 
   private logAuth(user: User, action: string, detail?: string) {
@@ -104,5 +108,70 @@ export class AuthService {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
     return this.publicUser(user);
+  }
+
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  /**
+   * Sifre sifirlama talebi. Hesabin var olup olmadigini sizdirmamak icin
+   * her durumda ayni yaniti doner.
+   */
+  async requestPasswordReset(email: string): Promise<{ ok: true }> {
+    const user = await this.users.findOne({
+      where: { email: email.trim().toLowerCase() },
+    });
+    // Google ile kayitli (passwordHash null) hesaplar da bu yolla sifre belirleyebilir
+    if (user) {
+      const token = randomBytes(32).toString('hex');
+      const expires = new Date();
+      expires.setHours(expires.getHours() + 1);
+      await this.users.update(
+        { id: user.id },
+        { resetTokenHash: this.hashToken(token), resetTokenExpiresAt: expires },
+      );
+      const frontend = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+      this.mail.passwordReset(
+        user.email,
+        user.name,
+        `${frontend}/sifre-sifirla?token=${token}`,
+      );
+      this.logAuth(user, 'auth.reset_request', 'Şifre sıfırlama bağlantısı gönderildi');
+    }
+    return { ok: true };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const user = await this.users.findOne({
+      where: {
+        resetTokenHash: this.hashToken(token),
+        resetTokenExpiresAt: MoreThan(new Date()),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        phone: true,
+        createdAt: true,
+        resetTokenHash: true,
+      },
+    });
+    if (!user) {
+      throw new BadRequestException(
+        'Bağlantı geçersiz veya süresi dolmuş. Lütfen yeniden talep edin.',
+      );
+    }
+    await this.users.update(
+      { id: user.id },
+      {
+        passwordHash: await bcrypt.hash(newPassword, 10),
+        resetTokenHash: null,
+        resetTokenExpiresAt: null,
+      },
+    );
+    this.logAuth(user, 'auth.reset_done', 'Şifre sıfırlandı');
+    return { token: this.sign(user), user: this.publicUser(user) };
   }
 }

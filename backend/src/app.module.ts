@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ProductsModule } from './products/products.module';
@@ -15,10 +17,13 @@ import { AdminModule } from './admin/admin.module';
 import { MailModule } from './mail/mail.module';
 import { LogsModule } from './logs/logs.module';
 import { BlogModule } from './blog/blog.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Kaba kuvvet ve spam korumasi: dakikada 120 istek (IP basina)
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -43,6 +48,8 @@ import { BlogModule } from './blog/blog.module';
     ContactModule,
     AdminModule,
     BlogModule,
+    SupportModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

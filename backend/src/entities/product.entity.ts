@@ -10,6 +10,7 @@ import {
 import { numericTransformer } from './numeric.transformer';
 import { Category } from './category.entity';
 import { ProductImage } from './product-image.entity';
+import { ProductVariant } from './product-variant.entity';
 import { Review } from './review.entity';
 
 @Entity('products')
@@ -103,6 +104,10 @@ export class Product {
 
   @OneToMany(() => ProductImage, (i) => i.product, { cascade: true })
   images: ProductImage[];
+
+  /** Bos ise urun tek fiyat/stok ile satilir */
+  @OneToMany(() => ProductVariant, (v) => v.product, { cascade: true })
+  variants: ProductVariant[];
 
   @OneToMany(() => Review, (r) => r.product)
   reviews: Review[];

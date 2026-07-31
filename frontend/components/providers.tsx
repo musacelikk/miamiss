@@ -10,7 +10,14 @@ import {
   useState,
 } from "react"
 import { Toaster } from "@/components/ui/sonner"
-import { api, getToken, setToken, type Product, type User } from "@/lib/api"
+import {
+  api,
+  getToken,
+  setToken,
+  type Product,
+  type ProductVariant,
+  type User,
+} from "@/lib/api"
 
 /* ================= Auth ================= */
 
@@ -40,7 +47,11 @@ export function useAuth() {
 /* ================= Cart ================= */
 
 export interface CartProductItem {
+  /** Sepette benzersiz satir anahtari: urun + varyant */
+  key: string
   productId: string
+  variantId: string | null
+  variantName: string | null
   slug: string
   name: string
   price: number
@@ -48,6 +59,9 @@ export interface CartProductItem {
   quantity: number
   stock: number
 }
+
+const lineKey = (productId: string, variantId?: string | null) =>
+  variantId ? `${productId}:${variantId}` : productId
 
 export interface CartGiftCardItem {
   key: string
@@ -62,9 +76,9 @@ interface CartContextValue {
   giftCards: CartGiftCardItem[]
   count: number
   subtotal: number
-  addProduct: (product: Product, quantity?: number) => void
-  updateQuantity: (productId: string, quantity: number) => void
-  removeProduct: (productId: string) => void
+  addProduct: (product: Product, quantity?: number, variant?: ProductVariant | null) => void
+  updateQuantity: (key: string, quantity: number) => void
+  removeProduct: (key: string) => void
   addGiftCard: (item: Omit<CartGiftCardItem, "key">) => void
   removeGiftCard: (key: string) => void
   clear: () => void
@@ -111,7 +125,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const cart = JSON.parse(localStorage.getItem(CART_KEY) ?? "{}")
-      if (Array.isArray(cart.items)) setItems(cart.items)
+      if (Array.isArray(cart.items)) {
+        // Varyant oncesi kaydedilmis sepetlerde key/variant alanlari eksik olabilir
+        setItems(
+          cart.items.map((i: CartProductItem) => ({
+            ...i,
+            key: i.key ?? lineKey(i.productId, i.variantId),
+            variantId: i.variantId ?? null,
+            variantName: i.variantName ?? null,
+          })),
+        )
+      }
       if (Array.isArray(cart.giftCards)) setGiftCards(cart.giftCards)
       const favs = JSON.parse(localStorage.getItem(FAV_KEY) ?? "[]")
       if (Array.isArray(favs)) setFavIds(new Set(favs))
@@ -205,45 +229,53 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [])
 
   /* Cart actions */
-  const addProduct = useCallback((product: Product, quantity = 1) => {
-    setItems((prev) => {
-      const existing = prev.find((i) => i.productId === product.id)
-      if (existing) {
-        return prev.map((i) =>
-          i.productId === product.id
-            ? { ...i, quantity: Math.min(i.quantity + quantity, product.stock) }
-            : i,
-        )
-      }
-      return [
-        ...prev,
-        {
-          productId: product.id,
-          slug: product.slug,
-          name: product.name,
-          price: product.price,
-          image: product.images?.[0]?.url ?? null,
-          quantity: Math.min(quantity, product.stock),
-          stock: product.stock,
-        },
-      ]
-    })
-  }, [])
+  const addProduct = useCallback(
+    (product: Product, quantity = 1, variant: ProductVariant | null = null) => {
+      const key = lineKey(product.id, variant?.id)
+      const price = variant ? variant.price : product.price
+      const stock = variant ? variant.stock : product.stock
 
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
+      setItems((prev) => {
+        const existing = prev.find((i) => i.key === key)
+        if (existing) {
+          return prev.map((i) =>
+            i.key === key
+              ? { ...i, price, stock, quantity: Math.min(i.quantity + quantity, stock) }
+              : i,
+          )
+        }
+        return [
+          ...prev,
+          {
+            key,
+            productId: product.id,
+            variantId: variant?.id ?? null,
+            variantName: variant?.name ?? null,
+            slug: product.slug,
+            name: product.name,
+            price,
+            image: product.images?.[0]?.url ?? null,
+            quantity: Math.min(quantity, stock),
+            stock,
+          },
+        ]
+      })
+    },
+    [],
+  )
+
+  const updateQuantity = useCallback((key: string, quantity: number) => {
     setItems((prev) =>
       quantity <= 0
-        ? prev.filter((i) => i.productId !== productId)
+        ? prev.filter((i) => i.key !== key)
         : prev.map((i) =>
-            i.productId === productId
-              ? { ...i, quantity: Math.min(quantity, i.stock) }
-              : i,
+            i.key === key ? { ...i, quantity: Math.min(quantity, i.stock) } : i,
           ),
     )
   }, [])
 
-  const removeProduct = useCallback((productId: string) => {
-    setItems((prev) => prev.filter((i) => i.productId !== productId))
+  const removeProduct = useCallback((key: string) => {
+    setItems((prev) => prev.filter((i) => i.key !== key))
   }, [])
 
   const addGiftCard = useCallback((item: Omit<CartGiftCardItem, "key">) => {

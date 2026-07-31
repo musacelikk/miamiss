@@ -71,6 +71,7 @@ export function SiteFooter() {
                 { href: "/hakkimizda?tab=iletisim", label: "İletişim" },
                 { href: "/blog", label: "Blog & Haberler" },
                 { href: "/siparis-takip", label: "Sipariş Takibi" },
+                { href: "/destek", label: "Destek" },
                 { href: "/mesafeli-satis", label: "Mesafeli Satış Sözleşmesi" },
                 { href: "/kvkk", label: "KVKK Aydınlatma Metni" },
                 { href: "/iade-degisim", label: "İade & Değişim" },

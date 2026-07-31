@@ -78,7 +78,15 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold">Şifre</label>
+            <div className="mb-1.5 flex items-baseline justify-between">
+              <label className="text-xs font-semibold">Şifre</label>
+              <Link
+                href="/sifremi-unuttum"
+                className="text-xs font-medium text-accent hover:underline"
+              >
+                Şifremi unuttum
+              </Link>
+            </div>
             <input
               type="password"
               required

@@ -87,6 +87,53 @@ export interface Category {
   image?: string | null
 }
 
+export interface ProductVariant {
+  id: string
+  name: string
+  price: number
+  compareAtPrice: number | null
+  stock: number
+  sku: string | null
+  sortOrder: number
+  isActive: boolean
+}
+
+/** Varyantli urunlerde satisa acik secenekler */
+export function activeVariants(product: {
+  variants?: ProductVariant[] | null
+}): ProductVariant[] {
+  return (product.variants ?? []).filter((v) => v.isActive)
+}
+
+/** Kart/liste gorunumu icin gosterilecek en dusuk fiyat ve toplam stok */
+export function productDisplay(product: Product): {
+  hasVariants: boolean
+  minPrice: number
+  maxPrice: number
+  compareAtPrice: number | null
+  stock: number
+} {
+  const variants = activeVariants(product)
+  if (!variants.length) {
+    return {
+      hasVariants: false,
+      minPrice: product.price,
+      maxPrice: product.price,
+      compareAtPrice: product.compareAtPrice,
+      stock: product.stock,
+    }
+  }
+  const prices = variants.map((v) => v.price)
+  const cheapest = variants.reduce((a, b) => (a.price <= b.price ? a : b))
+  return {
+    hasVariants: true,
+    minPrice: Math.min(...prices),
+    maxPrice: Math.max(...prices),
+    compareAtPrice: cheapest.compareAtPrice,
+    stock: variants.reduce((sum, v) => sum + v.stock, 0),
+  }
+}
+
 export interface HomepageSettings {
   heroEyebrow: string
   heroTitle: string
@@ -181,6 +228,7 @@ export interface Product {
   categoryId: string | null
   category?: Category | null
   images: ProductImage[]
+  variants?: ProductVariant[]
   avgRating?: number | null
   reviewCount?: number
   createdAt: string

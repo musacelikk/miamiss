@@ -33,6 +33,11 @@ export class PuzzleWin {
   @Column()
   sessionKey: string;
 
+  /** Tarayici verisi silinerek kupon uretilmesini engellemek icin */
+  @Index()
+  @Column({ type: 'varchar', nullable: true })
+  ipAddress: string | null;
+
   @Column({ type: 'uuid', nullable: true })
   userId: string | null;
 

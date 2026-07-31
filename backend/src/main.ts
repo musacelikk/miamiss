@@ -1,11 +1,24 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import helmet from 'helmet';
 import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Guvenlik basliklari. API + S3/CloudFront gorselleri servis edildigi icin
+  // CSP ve COEP kapali; digerleri (HSTS, nosniff, referrer vb.) aktif.
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
+  // Railway/CloudFront arkasinda gercek istemci IP'sini almak icin
+  app.set('trust proxy', 1);
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));

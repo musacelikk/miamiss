@@ -35,6 +35,13 @@ export class OrderItem {
   @Column()
   name: string;
 
+  /** Secilen varyant (varsa) — siparis aninda ad kopyalanir */
+  @Column({ type: 'uuid', nullable: true })
+  variantId: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  variantName: string | null;
+
   @Column({ type: 'varchar', nullable: true })
   imageUrl: string | null;
 
