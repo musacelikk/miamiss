@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server"
 
 /**
  * admin.miamisuhome.com -> admin paneli (URL'de /admin oneki olmadan)
- * miamisuhome.com/admin  -> admin subdomain'ine yonlendirilir (production)
+ * miamisuhome.com       -> www.miamisuhome.com (kalici 308)
+ * miamisuhome.com/admin -> admin subdomain'ine yonlendirilir
  * localhost'ta test: http://admin.localhost:3000
  */
 const ADMIN_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_DOMAIN ?? "admin.miamisuhome.com"
@@ -11,11 +12,25 @@ const ADMIN_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_DOMAIN ?? "admin.miamisuhome.
 const PASSTHROUGH = ["/giris", "/kayit"]
 
 export function proxy(request: NextRequest) {
-  const host = request.headers.get("host") ?? ""
+  const hostHeader = request.headers.get("host") ?? ""
+  const host = hostHeader.split(":")[0]?.toLowerCase() ?? ""
   const { pathname } = request.nextUrl
   const isAdminHost = host === ADMIN_DOMAIN || host.startsWith("admin.localhost")
 
   const proto = request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "")
+
+  // Apex domain her zaman www'ye yonlensin (SEO + tek canonical host)
+  // /admin istekleri dogrudan admin subdomain'ine gitsin (cift redirect olmasin)
+  if (host === "miamisuhome.com") {
+    if (pathname.startsWith("/admin")) {
+      const clean = pathname.replace(/^\/admin/, "") || "/"
+      return NextResponse.redirect(`https://${ADMIN_DOMAIN}${clean}${request.nextUrl.search}`, 308)
+    }
+    const url = request.nextUrl.clone()
+    url.protocol = "https:"
+    url.host = "www.miamisuhome.com"
+    return NextResponse.redirect(url, 308)
+  }
 
   if (isAdminHost) {
     // Temiz URL: admin.x.com/admin/urunler -> admin.x.com/urunler

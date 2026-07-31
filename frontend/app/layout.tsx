@@ -16,7 +16,7 @@ const cormorant = Cormorant_Garamond({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://miamisuhome.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.miamisuhome.com"),
   title: {
     default: "Miamisu Home — Doğal Taş Ev Aksesuarları",
     template: "%s | Miamisu Home",
