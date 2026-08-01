@@ -18,9 +18,9 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-primary text-primary-foreground">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:py-20">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-5">
           {/* Marka */}
-          <div className="space-y-5">
+          <div className="space-y-5 sm:col-span-2 lg:col-span-1">
             <Logo dark className="h-16 opacity-90" />
             <p className="max-w-xs text-sm leading-relaxed text-primary-foreground/70">
               Doğal traverten ve mermerden, el işçiliğiyle üretilen zamansız ev
@@ -72,6 +72,24 @@ export function SiteFooter() {
                 { href: "/blog", label: "Blog & Haberler" },
                 { href: "/siparis-takip", label: "Sipariş Takibi" },
                 { href: "/destek", label: "Destek" },
+              ].map((l) => (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    className="text-primary-foreground/70 transition-colors hover:text-primary-foreground"
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Sözleşmeler */}
+          <div>
+            <h3 className="eyebrow mb-5">Sözleşmeler</h3>
+            <ul className="space-y-3 text-sm">
+              {[
                 { href: "/mesafeli-satis", label: "Mesafeli Satış Sözleşmesi" },
                 { href: "/on-bilgilendirme", label: "Ön Bilgilendirme Formu" },
                 { href: "/uyelik-sozlesmesi", label: "Üyelik Sözleşmesi" },
