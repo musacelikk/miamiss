@@ -63,6 +63,7 @@ export default function CheckoutPage() {
   const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null)
   const [giftCardInput, setGiftCardInput] = useState("")
   const [giftCard, setGiftCard] = useState<{ code: string; balance: number } | null>(null)
+  const [agreementsAccepted, setAgreementsAccepted] = useState(false)
 
   const hasProducts = items.length > 0
   const hasGiftCardsInCart = giftCards.length > 0
@@ -158,6 +159,10 @@ export default function CheckoutPage() {
     e.preventDefault()
     if (!isValidPhone(form.shippingPhone)) {
       toast.error("Geçerli bir telefon numarası girin (05xx xxx xx xx).")
+      return
+    }
+    if (!agreementsAccepted) {
+      toast.error("Devam etmek için sözleşmeleri okuyup onaylamanız gerekiyor.")
       return
     }
     if (invoice.type === "INDIVIDUAL" && invoice.tckn && invoice.tckn.length !== 11) {
@@ -601,21 +606,37 @@ export default function CheckoutPage() {
               </div>
             </dl>
 
+            {/* Sözleşme onayı — işaretlenmeden sipariş verilemez */}
+            <label className="mt-5 flex cursor-pointer items-start gap-2.5 rounded-md border border-border bg-secondary/40 p-3">
+              <input
+                type="checkbox"
+                checked={agreementsAccepted}
+                onChange={(e) => setAgreementsAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[oklch(0.63_0.065_75)]"
+              />
+              <span className="text-[11px] leading-relaxed text-muted-foreground">
+                <Link href="/on-bilgilendirme" target="_blank" className="font-semibold text-accent underline">
+                  Ön Bilgilendirme Formu
+                </Link>
+                'nu ve{" "}
+                <Link href="/mesafeli-satis" target="_blank" className="font-semibold text-accent underline">
+                  Mesafeli Satış Sözleşmesi
+                </Link>
+                'ni okudum, onaylıyorum. Kişisel verilerimin{" "}
+                <Link href="/kvkk" target="_blank" className="underline">
+                  KVKK Aydınlatma Metni
+                </Link>{" "}
+                kapsamında işlenmesini kabul ediyorum.
+              </span>
+            </label>
             <button
               type="submit"
-              disabled={busy}
-              className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent disabled:opacity-60"
+              disabled={busy || !agreementsAccepted}
+              className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
               {busy ? "Sipariş oluşturuluyor..." : "Siparişi Tamamla"}
             </button>
-            <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
-              Siparişi tamamlayarak{" "}
-              <Link href="/mesafeli-satis" className="underline">
-                Mesafeli Satış Sözleşmesi
-              </Link>
-              'ni kabul etmiş olursunuz.
-            </p>
           </div>
 
           {/* Kupon */}

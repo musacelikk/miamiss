@@ -6,10 +6,16 @@ import {
   AlertTriangle,
   Banknote,
   Eye,
+  Gift,
+  Headset,
+  Home,
   Loader2,
   MessageSquare,
   Package,
+  Plus,
+  RotateCcw,
   ShoppingCart,
+  Tag,
   Users,
 } from "lucide-react"
 import {
@@ -116,19 +122,46 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Kartlar */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Kartlar — mobilde 2'li kompakt, genis ekranda 4'lu */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
         {cards.map((c) => (
-          <div key={c.label} className="rounded-md border border-border bg-card p-5">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div key={c.label} className="rounded-md border border-border bg-card p-3 sm:p-5">
+            <div className="flex items-center justify-between gap-1">
+              <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-xs">
                 {c.label}
               </p>
-              <c.icon className="h-4 w-4 text-accent" />
+              <c.icon className="h-3.5 w-3.5 shrink-0 text-accent sm:h-4 sm:w-4" />
             </div>
-            <p className="mt-3 font-display text-3xl">{c.value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{c.sub}</p>
+            <p className="mt-1.5 truncate font-display text-xl sm:mt-3 sm:text-3xl">{c.value}</p>
+            <p className="mt-0.5 truncate text-[10px] text-muted-foreground sm:mt-1 sm:text-xs">
+              {c.sub}
+            </p>
           </div>
+        ))}
+      </div>
+
+      {/* Hızlı erişim */}
+      <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-8 sm:gap-3">
+        {[
+          { href: "/admin/urunler", label: "Yeni Ürün", icon: Plus },
+          { href: "/admin/siparisler", label: "Siparişler", icon: ShoppingCart },
+          { href: "/admin/urunler", label: "Ürünler", icon: Package },
+          { href: "/admin/destek", label: "Destek", icon: Headset },
+          { href: "/admin/iadeler", label: "İadeler", icon: RotateCcw },
+          { href: "/admin/kuponlar", label: "Kuponlar", icon: Tag },
+          { href: "/admin/hediye-kartlari", label: "H. Kartları", icon: Gift },
+          { href: "/admin/anasayfa", label: "Anasayfa", icon: Home },
+        ].map((q, i) => (
+          <Link
+            key={i}
+            href={q.href}
+            className="flex flex-col items-center gap-1.5 rounded-md border border-border bg-card py-3 text-center transition-colors hover:border-accent hover:text-accent"
+          >
+            <q.icon className="h-4 w-4" strokeWidth={1.7} />
+            <span className="text-[10px] font-semibold leading-none sm:text-[11px]">
+              {q.label}
+            </span>
+          </Link>
         ))}
       </div>
 

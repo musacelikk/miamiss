@@ -114,6 +114,14 @@ export default function LoginPage() {
           </Link>
         </p>
       </form>
+
+      {/* Misafir siparişi olanlar için sessiz bir kısayol */}
+      <p className="mt-5 text-center text-xs text-muted-foreground">
+        Üye olmadan mı sipariş verdiniz?{" "}
+        <Link href="/siparis-takip" className="font-semibold text-accent hover:underline">
+          Sipariş takibi yapın
+        </Link>
+      </p>
     </div>
   )
 }

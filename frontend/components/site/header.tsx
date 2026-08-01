@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import {
   Heart,
   Menu,
+  PackageSearch,
   Search,
   ShoppingBag,
   User as UserIcon,
@@ -214,13 +215,20 @@ export function SiteHeader() {
                 ),
               )}
             </nav>
-            <div className="mt-auto border-t border-border px-5 py-5">
+            <div className="mt-auto space-y-4 border-t border-border px-5 py-5">
               <Link
                 href={user ? "/hesabim" : "/giris"}
                 className="flex items-center gap-3 text-sm font-medium"
               >
                 <UserIcon className="h-4 w-4" />
                 {user ? `Hesabım (${user.name.split(" ")[0]})` : "Giriş Yap / Üye Ol"}
+              </Link>
+              <Link
+                href="/siparis-takip"
+                className="flex items-center gap-3 text-sm font-medium text-muted-foreground"
+              >
+                <PackageSearch className="h-4 w-4" />
+                Sipariş Takibi
               </Link>
             </div>
           </div>

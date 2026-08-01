@@ -73,6 +73,8 @@ export function SiteFooter() {
                 { href: "/siparis-takip", label: "Sipariş Takibi" },
                 { href: "/destek", label: "Destek" },
                 { href: "/mesafeli-satis", label: "Mesafeli Satış Sözleşmesi" },
+                { href: "/on-bilgilendirme", label: "Ön Bilgilendirme Formu" },
+                { href: "/uyelik-sozlesmesi", label: "Üyelik Sözleşmesi" },
                 { href: "/kvkk", label: "KVKK Aydınlatma Metni" },
                 { href: "/iade-degisim", label: "İade & Değişim" },
               ].map((l) => (

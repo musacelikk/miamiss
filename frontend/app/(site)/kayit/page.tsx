@@ -13,11 +13,16 @@ export default function RegisterPage() {
   const { register } = useAuth()
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" })
   const [busy, setBusy] = useState(false)
+  const [agreementsAccepted, setAgreementsAccepted] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (form.phone && !isValidPhone(form.phone)) {
       toast.error("Geçerli bir telefon numarası girin (05xx xxx xx xx).")
+      return
+    }
+    if (!agreementsAccepted) {
+      toast.error("Üye olmak için sözleşmeleri okuyup onaylamanız gerekiyor.")
       return
     }
     setBusy(true)
@@ -94,17 +99,32 @@ export default function RegisterPage() {
             />
           </div>
         </div>
+        {/* Sözleşme onayı — işaretlenmeden üyelik oluşturulamaz */}
+        <label className="mt-5 flex cursor-pointer items-start gap-2.5 rounded-md border border-border bg-secondary/40 p-3">
+          <input
+            type="checkbox"
+            checked={agreementsAccepted}
+            onChange={(e) => setAgreementsAccepted(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-[oklch(0.63_0.065_75)]"
+          />
+          <span className="text-[11px] leading-relaxed text-muted-foreground">
+            <Link href="/uyelik-sozlesmesi" target="_blank" className="font-semibold text-accent underline">
+              Üyelik Sözleşmesi
+            </Link>
+            'ni okudum, kabul ediyorum. Kişisel verilerimin{" "}
+            <Link href="/kvkk" target="_blank" className="underline">
+              KVKK Aydınlatma Metni
+            </Link>{" "}
+            kapsamında işlenmesine onay veriyorum.
+          </span>
+        </label>
         <button
-          disabled={busy}
-          className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent disabled:opacity-60"
+          disabled={busy || !agreementsAccepted}
+          className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy && <Loader2 className="h-4 w-4 animate-spin" />}
           Üye Ol
         </button>
-        <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground">
-          Üye olarak <Link href="/kvkk" className="underline">KVKK Aydınlatma Metni</Link>'ni
-          okuduğunuzu kabul etmiş olursunuz.
-        </p>
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Zaten üye misiniz?{" "}
           <Link href="/giris" className="font-semibold text-accent hover:underline">

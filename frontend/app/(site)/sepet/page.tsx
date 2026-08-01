@@ -261,6 +261,12 @@ export default function CartPage() {
           >
             Alışverişe devam et
           </Link>
+          <Link
+            href="/siparis-takip"
+            className="mt-1.5 block text-center text-xs font-medium text-muted-foreground hover:text-accent"
+          >
+            Önceki siparişimi takip et
+          </Link>
         </div>
       </div>
     </div>
