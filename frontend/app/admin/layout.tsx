@@ -30,7 +30,7 @@ import {
   X,
 } from "lucide-react"
 import { useAuth } from "@/components/providers"
-import { Brand } from "@/components/brand"
+import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 
 const NAV = [
@@ -87,7 +87,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex items-center justify-between border-b border-sidebar-border px-5 py-5">
         <Link href="/admin">
-          <Brand className="text-2xl" />
+          <Logo dark className="h-12 opacity-90" />
         </Link>
         <button className="lg:hidden" onClick={() => setOpen(false)} aria-label="Kapat">
           <X className="h-5 w-5" />

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Instagram, Mail, MapPin, Phone } from "lucide-react"
-import { Brand } from "@/components/brand"
+import { Logo } from "@/components/logo"
 import { api, type StoreSettings } from "@/lib/api"
 
 export function SiteFooter() {
@@ -21,7 +21,7 @@ export function SiteFooter() {
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
           {/* Marka */}
           <div className="space-y-5">
-            <Brand className="text-3xl" />
+            <Logo dark className="h-16 opacity-90" />
             <p className="max-w-xs text-sm leading-relaxed text-primary-foreground/70">
               Doğal traverten ve mermerden, el işçiliğiyle üretilen zamansız ev
               aksesuarları. Her parça, taşın milyonlarca yıllık hikâyesini

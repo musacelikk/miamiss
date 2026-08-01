@@ -728,12 +728,31 @@ export default function AdminProductsPage() {
                       <img
                         src={imageUrl(url)}
                         alt=""
-                        className="h-20 w-20 rounded-md border border-border object-cover"
+                        className={cn(
+                          "h-20 w-20 rounded-md border-2 object-cover",
+                          i === 0 ? "border-accent" : "border-border",
+                        )}
                       />
-                      {i === 0 && (
+                      {i === 0 ? (
                         <span className="absolute -left-1 -top-1 rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-accent-foreground">
                           Kapak
                         </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm({
+                              ...form,
+                              imageUrls: [
+                                url,
+                                ...form.imageUrls.filter((_, j) => j !== i),
+                              ],
+                            })
+                          }
+                          className="absolute inset-x-1 bottom-1 hidden rounded bg-foreground/80 py-1 text-center text-[9px] font-bold text-background backdrop-blur group-hover:block"
+                        >
+                          Kapak Yap
+                        </button>
                       )}
                       <button
                         type="button"
@@ -775,7 +794,7 @@ export default function AdminProductsPage() {
                   />
                 </div>
                 <p className="mt-1.5 text-[11px] text-muted-foreground">
-                  İlk görsel kapak olur. JPEG/PNG/WebP, max 10 MB.
+                  Kapak görselini istediğin zaman "Kapak Yap" ile değiştirebilirsin. JPEG/PNG/WebP, max 10 MB.
                 </p>
               </div>
 

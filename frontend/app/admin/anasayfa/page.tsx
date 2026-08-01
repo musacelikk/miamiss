@@ -198,15 +198,19 @@ export default function AdminHomepagePage() {
           </div>
         </div>
 
-        <label className={`${label} mt-5`}>Hero Görselleri (4 adet kolaj)</label>
+        <label className={`${label} mt-5`}>
+          Hero Görselleri (sabit 4 adet — tıklayıp yenisiyle değiştirin)
+        </label>
         <div className="grid grid-cols-4 gap-3">
           {[0, 1, 2, 3].map((i) => (
             <ImagePicker
               key={i}
-              value={hp.heroImages[i] ?? null}
+              replaceOnly
+              value={hp.heroImages[i] ?? DEFAULT_HOMEPAGE.heroImages[i]}
               onChange={(url) => {
+                if (!url) return
                 const next = [...hp.heroImages]
-                next[i] = url ?? DEFAULT_HOMEPAGE.heroImages[i]
+                next[i] = url
                 setHp({ ...hp, heroImages: next })
               }}
             />

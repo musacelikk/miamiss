@@ -12,11 +12,14 @@ export function ImagePicker({
   onChange,
   className,
   aspect = "aspect-square",
+  replaceOnly = false,
 }: {
   value: string | null
   onChange: (url: string | null) => void
   className?: string
   aspect?: string
+  /** true: gorsel silinemez, yalnizca yenisiyle degistirilebilir */
+  replaceOnly?: boolean
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
@@ -60,7 +63,7 @@ export function ImagePicker({
           </span>
         )}
       </button>
-      {value && !busy && (
+      {value && !busy && !replaceOnly && (
         <span className="absolute right-1.5 top-1.5 hidden gap-1 group-hover:flex">
           <button
             type="button"
@@ -70,6 +73,11 @@ export function ImagePicker({
           >
             <X className="h-3.5 w-3.5" />
           </button>
+        </span>
+      )}
+      {value && !busy && replaceOnly && (
+        <span className="pointer-events-none absolute inset-x-1.5 bottom-1.5 hidden rounded bg-foreground/80 py-1 text-center text-[10px] font-bold text-background backdrop-blur group-hover:block">
+          Değiştir
         </span>
       )}
       <input

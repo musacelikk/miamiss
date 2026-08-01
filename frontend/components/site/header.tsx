@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react"
 import { useAuth, useCart } from "@/components/providers"
-import { Brand } from "@/components/brand"
+import { Logo } from "@/components/logo"
 import { api, type StoreSettings } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -104,7 +104,7 @@ export function SiteHeader() {
 
           {/* Logo */}
           <Link href="/" aria-label="Miamisu Home anasayfa">
-            <Brand className="text-[1.6rem] sm:text-[1.85rem]" />
+            <Logo className="h-11 sm:h-14" />
           </Link>
 
           {/* Masaüstü nav */}
@@ -194,7 +194,7 @@ export function SiteHeader() {
           />
           <div className="absolute inset-y-0 left-0 flex w-[85%] max-w-xs flex-col bg-background shadow-2xl animate-in slide-in-from-left duration-300">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <Brand className="text-2xl" />
+              <Logo className="h-10" />
               <button onClick={() => setMobileOpen(false)} aria-label="Menüyü kapat" className="p-1">
                 <X className="h-5 w-5" />
               </button>
