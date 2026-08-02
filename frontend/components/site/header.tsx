@@ -143,9 +143,18 @@ export function SiteHeader() {
             <Link
               href={user ? "/hesabim" : "/giris"}
               className="p-2 text-foreground/80 transition-colors hover:text-foreground"
-              aria-label={user ? "Hesabım" : "Giriş yap"}
+              aria-label={user ? `Hesabım (${user.name})` : "Giriş yap"}
             >
-              <UserIcon className="h-5 w-5" />
+              {user ? (
+                <span
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground ring-2 ring-accent/25 transition-transform hover:scale-105"
+                  title={user.name}
+                >
+                  {user.name.trim().charAt(0).toLocaleUpperCase("tr-TR")}
+                </span>
+              ) : (
+                <UserIcon className="h-5 w-5" />
+              )}
             </Link>
             <Link
               href="/sepet"
@@ -220,7 +229,13 @@ export function SiteHeader() {
                 href={user ? "/hesabim" : "/giris"}
                 className="flex items-center gap-3 text-sm font-medium"
               >
-                <UserIcon className="h-4 w-4" />
+                {user ? (
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
+                    {user.name.trim().charAt(0).toLocaleUpperCase("tr-TR")}
+                  </span>
+                ) : (
+                  <UserIcon className="h-4 w-4" />
+                )}
                 {user ? `Hesabım (${user.name.split(" ")[0]})` : "Giriş Yap / Üye Ol"}
               </Link>
               <Link
