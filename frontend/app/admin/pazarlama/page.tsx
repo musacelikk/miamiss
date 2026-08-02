@@ -10,12 +10,33 @@ import {
   Plus,
   Send,
   Trash2,
+  UserCheck,
+  UserX,
   X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
-import { formatDateTime } from "@/lib/format"
+import { formatDate, formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
+
+interface Recipient {
+  id: string
+  name: string
+  email: string
+}
+
+interface SubscriberData {
+  members: {
+    userId: string
+    name: string
+    email: string
+    subscribed: boolean
+    unsubscribedAt: string | null
+    memberSince: string
+  }[]
+  external: { id: string; email: string; unsubscribedAt: string }[]
+  counts: { subscribed: number; unsubscribed: number }
+}
 
 interface Template {
   id: string
@@ -91,6 +112,73 @@ export default function AdminMarketingPage() {
   const [audience, setAudience] = useState<"ALL" | "WITH_ORDERS">("ALL")
   const [testEmail, setTestEmail] = useState("")
   const [sending, setSending] = useState(false)
+  // Gonderim paneli alici listesi
+  const [recipients, setRecipients] = useState<Recipient[] | null>(null)
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set())
+  const [manualEmail, setManualEmail] = useState("")
+  // Aboneler sekmesi
+  const [tab, setTab] = useState<"templates" | "subscribers">("templates")
+  const [subs, setSubs] = useState<SubscriberData | null>(null)
+
+  const loadRecipients = useCallback((aud: "ALL" | "WITH_ORDERS") => {
+    setRecipients(null)
+    api<Recipient[]>(`/admin/marketing/recipients?audience=${aud}`)
+      .then((list) => {
+        setRecipients(list)
+        setSelectedEmails(new Set(list.map((r) => r.email)))
+      })
+      .catch((e) => toast.error(e.message))
+  }, [])
+
+  const loadSubs = useCallback(() => {
+    api<SubscriberData>("/admin/marketing/subscribers")
+      .then(setSubs)
+      .catch((e) => toast.error(e.message))
+  }, [])
+
+  useEffect(() => {
+    if (tab === "subscribers") loadSubs()
+  }, [tab, loadSubs])
+
+  useEffect(() => {
+    if (sendFor) loadRecipients(audience)
+  }, [sendFor, audience, loadRecipients])
+
+  const toggleEmail = (email: string, checked: boolean) =>
+    setSelectedEmails((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(email)
+      else next.delete(email)
+      return next
+    })
+
+  const addManualEmail = () => {
+    const email = manualEmail.trim().toLowerCase()
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Geçerli bir e-posta adresi girin.")
+      return
+    }
+    setRecipients((prev) =>
+      prev?.some((r) => r.email === email)
+        ? prev
+        : [...(prev ?? []), { id: `manual-${email}`, name: "(elle eklendi)", email }],
+    )
+    setSelectedEmails((prev) => new Set(prev).add(email))
+    setManualEmail("")
+  }
+
+  const toggleSubscriber = async (userId: string, subscribe: boolean) => {
+    try {
+      await api(`/admin/marketing/subscribers/${userId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ acceptsMarketing: subscribe }),
+      })
+      toast.success(subscribe ? "Yeniden abone edildi" : "Listeden çıkarıldı")
+      loadSubs()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Güncellenemedi")
+    }
+  }
 
   const load = useCallback(() => {
     api<Template[]>("/admin/marketing/templates")
@@ -154,25 +242,32 @@ export default function AdminMarketingPage() {
       toast.error("Test için bir e-posta adresi girin.")
       return
     }
+    if (!test && selectedEmails.size === 0) {
+      toast.error("En az bir alıcı seçmelisiniz.")
+      return
+    }
     if (
       !test &&
-      !confirm(
-        "Kampanya, pazarlama iznini kapatmamış TÜM seçili kitleye gönderilecek. Emin misiniz?",
-      )
+      !confirm(`Kampanya seçili ${selectedEmails.size} kişiye gönderilecek. Emin misiniz?`)
     )
       return
     setSending(true)
     try {
-      const res = await api<{ sent: number; test: boolean }>("/admin/marketing/send", {
-        method: "POST",
-        body: JSON.stringify({
-          templateId: sendFor.id,
-          audience,
-          testEmail: test ? testEmail.trim() : undefined,
-        }),
-      })
+      const res = await api<{ sent: number; skipped: number; test: boolean }>(
+        "/admin/marketing/send",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            templateId: sendFor.id,
+            recipientEmails: test ? [] : [...selectedEmails],
+            testEmail: test ? testEmail.trim() : undefined,
+          }),
+        },
+      )
       toast.success(
-        res.test ? "Test e-postası gönderildi" : `Kampanya ${res.sent} kişiye gönderildi`,
+        res.test
+          ? "Test e-postası gönderildi"
+          : `Kampanya ${res.sent} kişiye gönderildi${res.skipped ? ` (${res.skipped} kişi abonelikten çıktığı için atlandı)` : ""}`,
       )
       if (!res.test) setSendFor(null)
       load()
@@ -189,18 +284,157 @@ export default function AdminMarketingPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          E-posta kampanyaları SMTP üzerinden gönderilir; SMS şablonları Netgsm bağlanınca
-          aktifleşir. <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">{"{{name}}"}</code>{" "}
-          yazdığın yere alıcının adı gelir.
-        </p>
-        <button
-          onClick={() => setForm({ ...EMPTY })}
-          className="flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-xs font-semibold text-primary-foreground hover:bg-accent"
-        >
-          <Plus className="h-4 w-4" /> Yeni Şablon
-        </button>
+        <div className="flex gap-2">
+          {(
+            [
+              ["templates", "Şablonlar"],
+              ["subscribers", "Aboneler"],
+            ] as const
+          ).map(([key, labelText]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={cn(
+                "rounded-full border px-5 py-2 text-xs font-semibold transition-colors",
+                tab === key
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border hover:border-accent",
+              )}
+            >
+              {labelText}
+            </button>
+          ))}
+        </div>
+        {tab === "templates" && (
+          <button
+            onClick={() => setForm({ ...EMPTY })}
+            className="flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-xs font-semibold text-primary-foreground hover:bg-accent"
+          >
+            <Plus className="h-4 w-4" /> Yeni Şablon
+          </button>
+        )}
       </div>
+
+      {tab === "subscribers" ? (
+        subs === null ? (
+          <div className="flex justify-center py-24">
+            <Loader2 className="h-7 w-7 animate-spin text-accent" />
+          </div>
+        ) : (
+          <div className="space-y-5">
+            <div className="flex flex-wrap gap-3">
+              <span className="flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2.5 text-sm">
+                <UserCheck className="h-4 w-4 text-green-600" />
+                <strong>{subs.counts.subscribed}</strong> abone
+              </span>
+              <span className="flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2.5 text-sm">
+                <UserX className="h-4 w-4 text-destructive" />
+                <strong>{subs.counts.unsubscribed}</strong> çıkmış
+              </span>
+            </div>
+
+            <div className="overflow-x-auto rounded-md border border-border bg-card">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="px-4 py-3">Üye</th>
+                    <th className="px-4 py-3">Durum</th>
+                    <th className="px-4 py-3">Tarih</th>
+                    <th className="px-4 py-3 text-right">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {subs.members.map((m) => (
+                    <tr key={m.userId} className="hover:bg-secondary/40">
+                      <td className="px-4 py-2.5">
+                        <p className="font-medium">{m.name}</p>
+                        <p className="text-xs text-muted-foreground">{m.email}</p>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className={cn(
+                            "rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                            m.subscribed
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800",
+                          )}
+                        >
+                          {m.subscribed ? "Abone" : "Çıktı"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                        {m.subscribed
+                          ? `Üyelik: ${formatDate(m.memberSince)}`
+                          : m.unsubscribedAt
+                            ? `Çıkış: ${formatDate(m.unsubscribedAt)}`
+                            : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <button
+                          onClick={() => void toggleSubscriber(m.userId, !m.subscribed)}
+                          className={cn(
+                            "rounded-md border px-3.5 py-1.5 text-[11px] font-semibold transition-colors",
+                            m.subscribed
+                              ? "border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                              : "border-border hover:border-accent hover:text-accent",
+                          )}
+                        >
+                          {m.subscribed ? "Listeden Çıkar" : "Yeniden Abone Et"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {subs.external.length > 0 && (
+              <div className="rounded-md border border-border bg-card p-5">
+                <h3 className="text-sm font-semibold">
+                  Üye olmayan çıkışlar (elle eklenen adresler)
+                </h3>
+                <div className="mt-3 space-y-2">
+                  {subs.external.map((e) => (
+                    <div
+                      key={e.id}
+                      className="flex items-center justify-between rounded-md bg-secondary/50 px-3 py-2 text-xs"
+                    >
+                      <span>
+                        {e.email}
+                        <span className="ml-2 text-muted-foreground">
+                          Çıkış: {formatDate(e.unsubscribedAt)}
+                        </span>
+                      </span>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await api(`/admin/marketing/optouts/${e.id}`, {
+                              method: "DELETE",
+                            })
+                            toast.success("Adres tekrar gönderilebilir")
+                            loadSubs()
+                          } catch (err) {
+                            toast.error(err instanceof Error ? err.message : "Silinemedi")
+                          }
+                        }}
+                        className="font-semibold text-accent hover:underline"
+                      >
+                        Çıkışı Kaldır
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      ) : (
+        <>
+      <p className="text-sm text-muted-foreground">
+        E-posta kampanyaları SMTP üzerinden gönderilir; SMS şablonları Netgsm bağlanınca
+        aktifleşir. <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">{"{{name}}"}</code>{" "}
+        yazdığın yere alıcının adı gelir; her maile otomatik abonelikten çıkma linki eklenir.
+      </p>
 
       {/* Şablon düzenleyici */}
       {form && (
@@ -374,6 +608,82 @@ export default function AdminMarketingPage() {
               </select>
             </div>
 
+            {/* Alıcı listesi — çıkar / elle ekle */}
+            <div className="mt-4 rounded-md border border-border">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <p className="text-xs font-semibold">
+                  Alıcılar{" "}
+                  <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-foreground">
+                    {selectedEmails.size} seçili
+                  </span>
+                </p>
+                {recipients && recipients.length > 0 && (
+                  <button
+                    onClick={() =>
+                      setSelectedEmails(
+                        selectedEmails.size === recipients.length
+                          ? new Set()
+                          : new Set(recipients.map((r) => r.email)),
+                      )
+                    }
+                    className="text-[11px] font-semibold text-accent hover:underline"
+                  >
+                    {selectedEmails.size === recipients.length ? "Hiçbirini seçme" : "Tümünü seç"}
+                  </button>
+                )}
+              </div>
+              <div className="max-h-52 overflow-y-auto">
+                {recipients === null ? (
+                  <div className="flex justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-accent" />
+                  </div>
+                ) : recipients.length === 0 ? (
+                  <p className="px-3 py-5 text-center text-xs text-muted-foreground">
+                    Bu kitlede izinli alıcı yok. Aşağıdan elle ekleyebilirsiniz.
+                  </p>
+                ) : (
+                  recipients.map((r) => (
+                    <label
+                      key={r.email}
+                      className="flex cursor-pointer items-center gap-2.5 border-b border-border/60 px-3 py-2 last:border-0 hover:bg-secondary/40"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedEmails.has(r.email)}
+                        onChange={(e) => toggleEmail(r.email, e.target.checked)}
+                        className="h-4 w-4 accent-[oklch(0.63_0.065_75)]"
+                      />
+                      <span className="min-w-0 flex-1 truncate text-xs">
+                        <span className="font-medium">{r.name}</span>{" "}
+                        <span className="text-muted-foreground">· {r.email}</span>
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+              <div className="flex gap-2 border-t border-border p-2">
+                <input
+                  type="email"
+                  value={manualEmail}
+                  onChange={(e) => setManualEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      addManualEmail()
+                    }
+                  }}
+                  placeholder="Listeye elle e-posta ekle..."
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs outline-none focus:border-accent"
+                />
+                <button
+                  onClick={addManualEmail}
+                  className="shrink-0 rounded-md border border-primary px-3 text-xs font-semibold hover:bg-primary hover:text-primary-foreground"
+                >
+                  Ekle
+                </button>
+              </div>
+            </div>
+
             <div className="mt-4 rounded-md border border-dashed border-border p-4">
               <label className="mb-1.5 block text-xs font-semibold">
                 Önce kendine test gönder (önerilir)
@@ -406,8 +716,11 @@ export default function AdminMarketingPage() {
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              Kampanyayı Gönder
+              {selectedEmails.size} Kişiye Gönder
             </button>
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
+              Her e-postanın altına otomatik "abonelikten çık" bağlantısı eklenir.
+            </p>
           </div>
         </div>
       )}
@@ -493,6 +806,8 @@ export default function AdminMarketingPage() {
           ))
         )}
       </div>
+        </>
+      )}
     </div>
   )
 }

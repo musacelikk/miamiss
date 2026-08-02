@@ -176,8 +176,21 @@ export class MailService {
    * Kampanya e-postasi: sablon HTML'i oldugu gibi gonderilir ({{name}}
    * alici adiyla degistirilir), marka sablonuna sarilmaz.
    */
-  sendMarketing(to: string, subject: string, html: string, recipientName: string): void {
-    const personalized = html.replace(/\{\{\s*name\s*\}\}/g, recipientName);
+  sendMarketing(
+    to: string,
+    subject: string,
+    html: string,
+    recipientName: string,
+    unsubscribeUrl?: string,
+  ): void {
+    let personalized = html.replace(/\{\{\s*name\s*\}\}/g, recipientName);
+    // Yasal gereklilik: her kampanya mailinin altina abonelikten cikma linki
+    if (unsubscribeUrl) {
+      const footer = `<p style="text-align:center;font-size:11px;color:#9b9184;margin:18px auto 0;max-width:560px;font-family:Arial,sans-serif;">Bu e-postayı Miamisu Home pazarlama listesine kayıtlı olduğunuz için aldınız. <a href="${unsubscribeUrl}" style="color:#a5875c;">Abonelikten çık</a></p>`;
+      personalized = personalized.includes('</body>')
+        ? personalized.replace('</body>', `${footer}</body>`)
+        : personalized + footer;
+    }
     if (!this.transporter) {
       this.logger.log(`[MAIL SKIP] to=${to} subject="${subject}" (kampanya)`);
       return;

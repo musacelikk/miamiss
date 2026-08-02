@@ -6,6 +6,7 @@ import { useState } from "react"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/components/providers"
+import { GoogleButton } from "@/components/google-button"
 import { isValidPhone, phoneInputProps, sanitizeName, sanitizePhone } from "@/lib/input"
 
 export default function RegisterPage() {
@@ -125,6 +126,9 @@ export default function RegisterPage() {
           {busy && <Loader2 className="h-4 w-4 animate-spin" />}
           Üye Ol
         </button>
+
+        <GoogleButton />
+
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Zaten üye misiniz?{" "}
           <Link href="/giris" className="font-semibold text-accent hover:underline">
