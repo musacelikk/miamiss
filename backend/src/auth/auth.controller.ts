@@ -46,8 +46,12 @@ class ForgotPasswordDto {
 }
 
 class ResetPasswordDto {
+  @IsEmail()
+  email: string;
+
   @IsString()
-  token: string;
+  @MinLength(6)
+  code: string;
 
   @IsString()
   @MinLength(6)
@@ -84,7 +88,7 @@ export class AuthController {
   @Throttle({ default: { limit: 8, ttl: 60_000 } })
   @Post('reset-password')
   resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.auth.resetPassword(dto.token, dto.password);
+    return this.auth.resetPassword(dto.email, dto.code, dto.password);
   }
 
   @Get('me')

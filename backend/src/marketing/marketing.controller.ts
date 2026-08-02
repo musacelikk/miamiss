@@ -250,6 +250,32 @@ export class MarketingController {
     return { ok: true };
   }
 
+  /** Admin bir adresi elle engeller: o adrese hicbir kampanya gitmez. */
+  @Post('admin/marketing/optouts')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async addOptout(@Body() dto: { email: string }, @CurrentUser() admin: AuthUser) {
+    const email = (dto.email ?? '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestException('Geçerli bir e-posta adresi girin.');
+    }
+    const user = await this.users.findOne({ where: { email } });
+    if (user) {
+      await this.users.update({ id: user.id }, { acceptsMarketing: false });
+    }
+    if (!(await this.optouts.findOne({ where: { email } }))) {
+      await this.optouts.save(this.optouts.create({ email, userId: user?.id ?? null }));
+    }
+    this.logs.record({
+      userId: admin!.id,
+      email: admin!.email,
+      actorType: 'ADMIN',
+      action: 'marketing.optout_add',
+      detail: `${email} pazarlama listesinden elle engellendi`,
+    });
+    return { ok: true };
+  }
+
   /** Uye olmayan bir cikis kaydini kaldirir (adres tekrar gonderilebilir olur). */
   @Delete('admin/marketing/optouts/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -277,7 +303,10 @@ export class MarketingController {
       throw new BadRequestException('E-posta şablonunda konu (subject) zorunludur.');
     }
 
-    const frontend = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+    const frontend = (process.env.FRONTEND_URL ?? 'http://localhost:3000')
+      .split(',')[0]
+      .trim()
+      .replace(/\/$/, '');
     const linkFor = (email: string) =>
       `${frontend}/abonelik?email=${encodeURIComponent(email)}&token=${unsubscribeToken(email)}`;
 

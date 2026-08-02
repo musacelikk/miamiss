@@ -58,8 +58,7 @@ const PRESETS: { name: string; subject: string; html: string }[] = [
 <html lang="tr"><body style="margin:0;padding:0;background:#f7f4ee;font-family:Arial,sans-serif;color:#2e2925;">
 <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
   <div style="text-align:center;padding-bottom:20px;">
-    <span style="font-size:26px;font-style:italic;font-family:Georgia,serif;">miamisu</span>
-    <span style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:#b3a898;"> home</span>
+    <img src="https://www.miamisuhome.com/logo/logo.png" alt="Miamisu Home" height="64" style="height:64px;width:auto;" />
   </div>
   <div style="background:#fff;border:1px solid #e6dfd2;border-radius:8px;padding:32px;text-align:center;">
     <p style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#a5875c;margin:0;">Size Özel</p>
@@ -78,8 +77,7 @@ const PRESETS: { name: string; subject: string; html: string }[] = [
 <html lang="tr"><body style="margin:0;padding:0;background:#f7f4ee;font-family:Arial,sans-serif;color:#2e2925;">
 <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
   <div style="text-align:center;padding-bottom:20px;">
-    <span style="font-size:26px;font-style:italic;font-family:Georgia,serif;">miamisu</span>
-    <span style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:#b3a898;"> home</span>
+    <img src="https://www.miamisuhome.com/logo/logo.png" alt="Miamisu Home" height="64" style="height:64px;width:auto;" />
   </div>
   <div style="background:#fff;border:1px solid #e6dfd2;border-radius:8px;padding:32px;">
     <p style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#a5875c;margin:0;text-align:center;">Yeni Sezon</p>
@@ -119,6 +117,23 @@ export default function AdminMarketingPage() {
   // Aboneler sekmesi
   const [tab, setTab] = useState<"templates" | "subscribers">("templates")
   const [subs, setSubs] = useState<SubscriberData | null>(null)
+  const [blockEmail, setBlockEmail] = useState("")
+
+  const addBlockedEmail = async () => {
+    const email = blockEmail.trim().toLowerCase()
+    if (!email) return
+    try {
+      await api("/admin/marketing/optouts", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      })
+      toast.success(`${email} artık kampanya almayacak`)
+      setBlockEmail("")
+      loadSubs()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Eklenemedi")
+    }
+  }
 
   const loadRecipients = useCallback((aud: "ALL" | "WITH_ORDERS") => {
     setRecipients(null)
@@ -322,7 +337,7 @@ export default function AdminMarketingPage() {
           </div>
         ) : (
           <div className="space-y-5">
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2.5 text-sm">
                 <UserCheck className="h-4 w-4 text-green-600" />
                 <strong>{subs.counts.subscribed}</strong> abone
@@ -331,6 +346,28 @@ export default function AdminMarketingPage() {
                 <UserX className="h-4 w-4 text-destructive" />
                 <strong>{subs.counts.unsubscribed}</strong> çıkmış
               </span>
+              {/* Elle adres engelleme: yazilan adrese hicbir kampanya gitmez */}
+              <div className="ml-auto flex gap-2">
+                <input
+                  type="email"
+                  value={blockEmail}
+                  onChange={(e) => setBlockEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      void addBlockedEmail()
+                    }
+                  }}
+                  placeholder="Adresi listeden çıkar..."
+                  className="w-56 rounded-md border border-border bg-card px-3 py-2 text-xs outline-none focus:border-accent"
+                />
+                <button
+                  onClick={() => void addBlockedEmail()}
+                  className="shrink-0 rounded-md border border-destructive/40 px-4 text-xs font-semibold text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  Engelle
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto rounded-md border border-border bg-card">

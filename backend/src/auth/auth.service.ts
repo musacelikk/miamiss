@@ -115,8 +115,8 @@ export class AuthService {
   }
 
   /**
-   * Sifre sifirlama talebi. Hesabin var olup olmadigini sizdirmamak icin
-   * her durumda ayni yaniti doner.
+   * Sifre sifirlama talebi: e-postaya 5 dakika gecerli 6 haneli kod gider.
+   * Hesabin var olup olmadigini sizdirmamak icin her durumda ayni yanit doner.
    */
   async requestPasswordReset(email: string): Promise<{ ok: true }> {
     const user = await this.users.findOne({
@@ -124,28 +124,24 @@ export class AuthService {
     });
     // Google ile kayitli (passwordHash null) hesaplar da bu yolla sifre belirleyebilir
     if (user) {
-      const token = randomBytes(32).toString('hex');
+      const code = String(randomBytes(4).readUInt32BE(0) % 900000 + 100000);
       const expires = new Date();
-      expires.setHours(expires.getHours() + 1);
+      expires.setMinutes(expires.getMinutes() + 5);
       await this.users.update(
         { id: user.id },
-        { resetTokenHash: this.hashToken(token), resetTokenExpiresAt: expires },
+        { resetTokenHash: this.hashToken(code), resetTokenExpiresAt: expires },
       );
-      const frontend = process.env.FRONTEND_URL ?? 'http://localhost:3000';
-      this.mail.passwordReset(
-        user.email,
-        user.name,
-        `${frontend}/sifre-sifirla?token=${token}`,
-      );
-      this.logAuth(user, 'auth.reset_request', 'Şifre sıfırlama bağlantısı gönderildi');
+      this.mail.passwordResetCode(user.email, user.name.split(' ')[0], code);
+      this.logAuth(user, 'auth.reset_request', 'Şifre sıfırlama kodu gönderildi');
     }
     return { ok: true };
   }
 
-  async resetPassword(token: string, newPassword: string) {
+  async resetPassword(email: string, code: string, newPassword: string) {
     const user = await this.users.findOne({
       where: {
-        resetTokenHash: this.hashToken(token),
+        email: email.trim().toLowerCase(),
+        resetTokenHash: this.hashToken(code.trim()),
         resetTokenExpiresAt: MoreThan(new Date()),
       },
       select: {
@@ -160,7 +156,7 @@ export class AuthService {
     });
     if (!user) {
       throw new BadRequestException(
-        'Bağlantı geçersiz veya süresi dolmuş. Lütfen yeniden talep edin.',
+        'Kod hatalı veya süresi dolmuş. Yeni bir kod talep edebilirsiniz.',
       );
     }
     await this.users.update(
@@ -171,7 +167,7 @@ export class AuthService {
         resetTokenExpiresAt: null,
       },
     );
-    this.logAuth(user, 'auth.reset_done', 'Şifre sıfırlandı');
+    this.logAuth(user, 'auth.reset_done', 'Şifre kod ile sıfırlandı');
     return { token: this.sign(user), user: this.publicUser(user) };
   }
 }

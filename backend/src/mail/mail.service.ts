@@ -29,7 +29,11 @@ export class MailService {
     const pass = config.get<string>('SMTP_PASS');
     this.from =
       config.get<string>('SMTP_FROM') ?? (user ? `Miamisu Home <${user}>` : 'Miamisu Home');
-    this.siteUrl = config.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
+    // FRONTEND_URL yanlislikla virgullu (coklu) girilse bile ilk adresi kullan
+    this.siteUrl = (config.get<string>('FRONTEND_URL') ?? 'http://localhost:3000')
+      .split(',')[0]
+      .trim()
+      .replace(/\/$/, '');
 
     if (host && user && pass) {
       const port = parseInt(config.get<string>('SMTP_PORT') ?? '587', 10);
@@ -65,14 +69,13 @@ export class MailService {
 <html lang="tr"><body style="margin:0;padding:0;background:#f7f4ee;font-family:Arial,Helvetica,sans-serif;color:#2e2925;">
   <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
     <div style="text-align:center;padding-bottom:20px;">
-      <span style="font-size:26px;font-style:italic;font-family:Georgia,serif;color:#2e2925;">miamisu</span>
-      <span style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:#b3a898;"> home</span>
+      <img src="${this.siteUrl}/logo/logo.png" alt="Miamisu Home" height="64" style="height:64px;width:auto;" />
     </div>
     <div style="background:#ffffff;border:1px solid #e6dfd2;border-radius:8px;padding:28px;">
       ${body}
     </div>
     <p style="text-align:center;font-size:11px;color:#9b9184;margin-top:20px;">
-      Miamisu Home — Doğal Taş Ev Aksesuarları · <a href="${this.siteUrl}" style="color:#a5875c;">${this.siteUrl.replace(/^https?:\/\//, '')}</a>
+      Miamisu Home — Doğal Taş Ev Aksesuarları · <a href="https://www.miamisuhome.com" style="color:#a5875c;">https://www.miamisuhome.com</a>
     </p>
   </div>
 </body></html>`;
@@ -114,7 +117,7 @@ export class MailService {
        <p style="font-size:15px;text-align:right;border-top:1px solid #eee;padding-top:10px;">
          Toplam: <strong>${order.grandTotal.toLocaleString('tr-TR')} ₺</strong></p>
        ${bankBlock}
-       <p style="font-size:13px;margin-top:16px;">Siparişinizi <a href="${this.siteUrl}/siparis-takip" style="color:#a5875c;">buradan takip edebilirsiniz</a>.</p>`,
+       <p style="font-size:13px;margin-top:16px;">Siparişinizi <a href="https://www.miamisuhome.com/siparis-takip" style="color:#a5875c;">buradan takip edebilirsiniz</a>.</p>`,
     );
   }
 
@@ -168,7 +171,7 @@ export class MailService {
        <p style="font-size:15px;margin:16px 0;">
          <span style="font-family:monospace;letter-spacing:1px;background:#f7f4ee;border:1px dashed #a5875c;padding:6px 12px;border-radius:4px;">${card.code}</span>
          — <strong>${card.amount.toLocaleString('tr-TR')} ₺</strong></p>
-       <p style="font-size:13px;">Kodu <a href="${this.siteUrl}" style="color:#a5875c;">miamisuhome.com</a> üzerinde ödeme adımında kullanabilirsiniz. 1 yıl geçerlidir.</p>`,
+       <p style="font-size:13px;">Kodu <a href="" style="color:#a5875c;">miamisuhome.com</a> üzerinde ödeme adımında kullanabilirsiniz. 1 yıl geçerlidir.</p>`,
     );
   }
 
@@ -247,7 +250,7 @@ export class MailService {
        <p style="font-size:13px;color:#9b9184;margin:0 0 14px;">${subject} · Talep No: ${ticketNo}</p>
        <div style="background:#f7f4ee;border-radius:6px;padding:16px;font-size:14px;white-space:pre-wrap;">${escapeHtml(body)}</div>
        <p style="font-size:13px;margin-top:16px;">
-         Yanıtlamak için <a href="${this.siteUrl}/destek" style="color:#a5875c;">destek sayfanızı</a> ziyaret edebilirsiniz.
+         Yanıtlamak için <a href="https://www.miamisuhome.com/destek" style="color:#a5875c;">destek sayfanızı</a> ziyaret edebilirsiniz.
        </p>`,
     );
   }
@@ -304,17 +307,17 @@ export class MailService {
     );
   }
 
-  passwordReset(email: string, name: string, resetUrl: string): void {
+  passwordResetCode(email: string, name: string, code: string): void {
     this.send(
       email,
-      'Şifre sıfırlama talebiniz',
-      `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Şifrenizi Sıfırlayın</h2>
-       <p style="font-size:14px;">Merhaba ${name}, hesabınız için şifre sıfırlama talebi aldık.
-       Aşağıdaki butona tıklayarak yeni şifrenizi belirleyebilirsiniz.</p>
-       <p style="margin:22px 0;"><a href="${resetUrl}"
-          style="background:#2e2925;color:#fff;padding:12px 26px;border-radius:4px;text-decoration:none;font-size:14px;">Yeni Şifre Belirle</a></p>
-       <p style="font-size:12px;color:#9b9184;">Bu bağlantı <strong>1 saat</strong> geçerlidir.
-       Bu talebi siz yapmadıysanız bu e-postayı yok sayabilirsiniz, şifreniz değişmez.</p>`,
+      `Şifre sıfırlama kodunuz: ${code}`,
+      `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Şifre Sıfırlama Kodunuz</h2>
+       <p style="font-size:14px;">Merhaba ${name}, şifrenizi sıfırlamak için aşağıdaki kodu kullanın:</p>
+       <p style="margin:22px 0;text-align:center;">
+         <span style="display:inline-block;font-family:monospace;font-size:32px;font-weight:bold;letter-spacing:10px;background:#f7f4ee;border:2px dashed #a5875c;border-radius:8px;padding:14px 26px;color:#2e2925;">${code}</span>
+       </p>
+       <p style="font-size:12px;color:#9b9184;">Kod <strong>5 dakika</strong> geçerlidir ve yalnızca bir kez kullanılabilir.
+       Bu talebi siz yapmadıysanız bu e-postayı yok sayın, şifreniz değişmez.</p>`,
     );
   }
 
@@ -324,7 +327,7 @@ export class MailService {
       `${productName} tekrar stokta!`,
       `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Beklediğiniz Ürün Stokta ✨</h2>
        <p style="font-size:14px;"><strong>${productName}</strong> yeniden satışta. Tükenmeden göz atın:</p>
-       <p style="margin-top:16px;"><a href="${this.siteUrl}/urunler/${slug}"
+       <p style="margin-top:16px;"><a href="https://www.miamisuhome.com/urunler/${slug}"
           style="background:#2e2925;color:#fff;padding:10px 22px;border-radius:4px;text-decoration:none;font-size:14px;">Ürüne Git</a></p>`,
     );
   }
