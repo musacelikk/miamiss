@@ -65,7 +65,7 @@ const PRESETS: { name: string; subject: string; html: string }[] = [
     <h1 style="font-family:Georgia,serif;font-size:30px;margin:12px 0;">Merhaba {{name}},<br/>%10 İndirim Sizi Bekliyor</h1>
     <p style="font-size:14px;color:#6b6258;line-height:1.6;">Doğal taş koleksiyonumuzda geçerli indirim fırsatını kaçırmayın. Sepette kupon kodunuzu kullanmanız yeterli.</p>
     <p style="margin:24px 0;"><span style="font-family:monospace;font-size:20px;letter-spacing:3px;border:2px dashed #a5875c;padding:10px 24px;border-radius:6px;color:#a5875c;">KUPONKODU</span></p>
-    <a href="https://miamisuhome.com/urunler" style="display:inline-block;background:#2e2925;color:#fff;padding:14px 34px;border-radius:4px;text-decoration:none;font-size:14px;">Alışverişe Başla</a>
+    <a href="https://www.miamisuhome.com/urunler" style="display:inline-block;background:#2e2925;color:#fff;padding:14px 34px;border-radius:4px;text-decoration:none;font-size:14px;">Alışverişe Başla</a>
   </div>
   <p style="text-align:center;font-size:11px;color:#9b9184;margin-top:20px;">Miamisu Home · miamisuhome.com</p>
 </div></body></html>`,
@@ -83,9 +83,9 @@ const PRESETS: { name: string; subject: string; html: string }[] = [
     <p style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#a5875c;margin:0;text-align:center;">Yeni Sezon</p>
     <h1 style="font-family:Georgia,serif;font-size:28px;margin:12px 0;text-align:center;">Merhaba {{name}}, Yeni Parçalar Geldi</h1>
     <p style="font-size:14px;color:#6b6258;line-height:1.6;text-align:center;">Traverten ve mermerden el işçiliğiyle üretilen yeni ürünlerimiz koleksiyondaki yerini aldı. İlk gören siz olun.</p>
-    <p style="text-align:center;margin-top:24px;"><a href="https://miamisuhome.com/urunler" style="display:inline-block;background:#2e2925;color:#fff;padding:14px 34px;border-radius:4px;text-decoration:none;font-size:14px;">Koleksiyonu Keşfet</a></p>
+    <p style="text-align:center;margin-top:24px;"><a href="https://www.miamisuhome.com/urunler" style="display:inline-block;background:#2e2925;color:#fff;padding:14px 34px;border-radius:4px;text-decoration:none;font-size:14px;">Koleksiyonu Keşfet</a></p>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9b9184;margin-top:20px;">Miamisu Home · miamisuhome.com</p>
+  <p style="text-align:center;font-size:11px;color:#9b9184;margin-top:20px;">Miamisu Home · www.miamisuhome.com</p>
 </div></body></html>`,
   },
 ]
