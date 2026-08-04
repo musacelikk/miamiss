@@ -606,6 +606,52 @@ export default function CheckoutPage() {
               </div>
             </dl>
 
+            {/* Kupon — sipariş butonundan önce (özellikle mobilde) */}
+            <div className="mt-5 border-t border-border pt-5">
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <Tag className="h-4 w-4 text-accent" /> Kupon Kodu
+              </p>
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  placeholder="MIA-XXXXXX"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm uppercase outline-none focus:border-accent"
+                />
+                <button
+                  type="button"
+                  onClick={applyCoupon}
+                  className="shrink-0 rounded-md border border-primary px-4 text-xs font-semibold transition-colors hover:bg-primary hover:text-primary-foreground"
+                >
+                  Uygula
+                </button>
+              </div>
+            </div>
+
+            {/* Hediye kartı */}
+            {!hasGiftCardsInCart && (
+              <div className="mt-4">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <Gift className="h-4 w-4 text-accent" /> Hediye Kartı ile Öde
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    value={giftCardInput}
+                    onChange={(e) => setGiftCardInput(e.target.value.toUpperCase())}
+                    placeholder="GIFT-XXXX-XXXX-XXXX"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm uppercase outline-none focus:border-accent"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyGiftCard}
+                    className="shrink-0 rounded-md border border-primary px-4 text-xs font-semibold transition-colors hover:bg-primary hover:text-primary-foreground"
+                  >
+                    Uygula
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Sözleşme onayı — işaretlenmeden sipariş verilemez */}
             <label className="mt-5 flex cursor-pointer items-start gap-2.5 rounded-md border border-border bg-secondary/40 p-3">
               <input
@@ -638,52 +684,6 @@ export default function CheckoutPage() {
               {busy ? "Sipariş oluşturuluyor..." : "Siparişi Tamamla"}
             </button>
           </div>
-
-          {/* Kupon */}
-          <div className="rounded-md border border-border bg-card p-5">
-            <p className="flex items-center gap-2 text-sm font-semibold">
-              <Tag className="h-4 w-4 text-accent" /> Kupon Kodu
-            </p>
-            <div className="mt-3 flex gap-2">
-              <input
-                value={couponInput}
-                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                placeholder="MIA-XXXXXX"
-                className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm uppercase outline-none focus:border-accent"
-              />
-              <button
-                type="button"
-                onClick={applyCoupon}
-                className="shrink-0 rounded-md border border-primary px-4 text-xs font-semibold transition-colors hover:bg-primary hover:text-primary-foreground"
-              >
-                Uygula
-              </button>
-            </div>
-          </div>
-
-          {/* Hediye kartı */}
-          {!hasGiftCardsInCart && (
-            <div className="rounded-md border border-border bg-card p-5">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <Gift className="h-4 w-4 text-accent" /> Hediye Kartı ile Öde
-              </p>
-              <div className="mt-3 flex gap-2">
-                <input
-                  value={giftCardInput}
-                  onChange={(e) => setGiftCardInput(e.target.value.toUpperCase())}
-                  placeholder="GIFT-XXXX-XXXX-XXXX"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm uppercase outline-none focus:border-accent"
-                />
-                <button
-                  type="button"
-                  onClick={applyGiftCard}
-                  className="shrink-0 rounded-md border border-primary px-4 text-xs font-semibold transition-colors hover:bg-primary hover:text-primary-foreground"
-                >
-                  Uygula
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </form>
     </div>
