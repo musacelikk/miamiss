@@ -11,6 +11,7 @@ import {
   type StoreSettings,
 } from "@/lib/api"
 import { ImagePicker } from "@/components/admin/image-picker"
+import { VideoPicker } from "@/components/admin/video-picker"
 
 export default function AdminHomepagePage() {
   const [hp, setHp] = useState<HomepageSettings | null>(null)
@@ -228,26 +229,26 @@ export default function AdminHomepagePage() {
           {hp.heroBackgroundType === "video" && (
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
-                <label className={label}>Video Dosyası (URL veya /video/... yolu)</label>
-                <input
+                <label className={label}>Hero Videosu</label>
+                <VideoPicker
                   value={hp.heroBackgroundVideo}
-                  onChange={set("heroBackgroundVideo")}
-                  className={input}
-                  placeholder="/video/265188_medium.mp4"
+                  onChange={(url) => setHp({ ...hp, heroBackgroundVideo: url })}
                 />
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Video dosyalarını sitenin <code>public/video/</code> klasörüne ekleyip yolunu
-                  buraya yazabilirsin (örn. <code>/video/tanitim.mp4</code>) veya harici bir
-                  video adresi kullanabilirsin. Önerilen: mp4, 1080p, 10 MB altı.
-                </p>
               </div>
               <div>
-                <label className={label}>Video Yüklenene Kadar Gösterilecek Görsel (poster)</label>
+                <label className={label}>
+                  Kapak Görseli (video yüklenirken anında görünür — önerilir)
+                </label>
                 <ImagePicker
                   value={hp.heroBackgroundImage || null}
                   onChange={(url) => setHp({ ...hp, heroBackgroundImage: url ?? "" })}
                   aspect="aspect-video"
                 />
+                <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                  Ziyaretçi sayfayı açtığında bu görsel hemen çizilir, video hazır olunca
+                  yumuşakça devreye girer. Videonun ilk karesinden bir ekran görüntüsü koymak
+                  en iyi sonucu verir.
+                </p>
               </div>
             </div>
           )}

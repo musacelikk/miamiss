@@ -35,12 +35,21 @@ export class StorageService {
     }
   }
 
-  async upload(buffer: Buffer, originalName: string, mimeType: string): Promise<string> {
+  /**
+   * Dosyayi depolar ve herkese acik URL doner.
+   * `folder` ile S3/disk altinda ayri klasore yazilir (products, videos ...).
+   */
+  async upload(
+    buffer: Buffer,
+    originalName: string,
+    mimeType: string,
+    folder = 'products',
+  ): Promise<string> {
     const ext = (originalName.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
     const name = `${Date.now()}-${randomBytes(6).toString('hex')}.${ext}`;
 
     if (this.s3 && this.bucket) {
-      const key = `products/${name}`;
+      const key = `${folder}/${name}`;
       await this.s3.send(
         new PutObjectCommand({
           Bucket: this.bucket,
@@ -53,9 +62,9 @@ export class StorageService {
       return `${this.publicBase}/${key}`;
     }
 
-    const dir = join(process.cwd(), 'uploads', 'products');
+    const dir = join(process.cwd(), 'uploads', folder);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, name), buffer);
-    return `${this.publicBase}/uploads/products/${name}`;
+    return `${this.publicBase}/uploads/${folder}/${name}`;
   }
 }

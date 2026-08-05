@@ -104,17 +104,30 @@
   }
 }
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+/* İnce, saydam scrollbar — zemini kapatmaz, sayfa içeriği kesintisiz görünür */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.45 0.02 70 / 0.28) transparent;
 }
-::-webkit-scrollbar-track {
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+  background: transparent;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.85 0.02 80);
-  border-radius: 8px;
-  border: 2px solid oklch(0.977 0.007 85);
+  background: oklch(0.45 0.02 70 / 0.25);
+  border-radius: 999px;
+  /* Saydam kenarlık + padding-box: tutamaç ince ve havada duruyor gibi görünür */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.4 0.02 70 / 0.45);
+  background-clip: padding-box;
 }
 
 html {

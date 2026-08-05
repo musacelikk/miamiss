@@ -171,7 +171,7 @@ export interface HomepageSettings {
 
 export const DEFAULT_HOMEPAGE: HomepageSettings = {
   heroBackgroundType: "collage",
-  heroBackgroundVideo: "/video/265188_medium.mp4",
+  heroBackgroundVideo: "",
   heroBackgroundImage: "",
   heroOverlayOpacity: 40,
   heroEyebrow: "Doğal Taş Ev Aksesuarları",

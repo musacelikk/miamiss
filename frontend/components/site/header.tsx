@@ -23,7 +23,7 @@ const NAV = [
   { href: "/hakkimizda", label: "Hakkımızda" },
 ]
 
-export function SiteHeader() {
+export function SiteHeader({ heroOverlay = false }: { heroOverlay?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const { user } = useAuth()
@@ -64,20 +64,37 @@ export function SiteHeader() {
     setQuery("")
   }
 
+  /* Anasayfada tam ekran hero varsa header akıştan çıkar, videonun üstüne biner */
+  const overlayMode = heroOverlay && pathname === "/"
+  /* Sayfa başındayken tamamen saydam — video arkada kesintisiz görünür */
+  const transparent = overlayMode && !scrolled && !searchOpen
+
+  const onDark = "text-white/90 hover:text-white [filter:drop-shadow(0_1px_3px_rgb(0_0_0/0.45))]"
+  const onLight = "text-foreground/80 hover:text-foreground"
+  const iconClass = transparent ? onDark : onLight
+
   return (
-    <header className="sticky top-0 z-50">
+    <header className={cn("z-50", overlayMode ? "fixed inset-x-0 top-0" : "sticky top-0")}>
       {announcement &&
         (announcement.url ? (
           <Link
             href={announcement.url}
-            className="block bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+            className={cn(
+              "block text-primary-foreground transition-colors",
+              transparent ? "bg-primary/55 backdrop-blur-sm" : "bg-primary hover:bg-primary/90",
+            )}
           >
             <p className="mx-auto max-w-7xl px-4 py-2 text-center text-xs font-medium tracking-wide underline-offset-2 hover:underline">
               {announcement.text}
             </p>
           </Link>
         ) : (
-          <div className="bg-primary text-primary-foreground">
+          <div
+            className={cn(
+              "text-primary-foreground transition-colors",
+              transparent ? "bg-primary/55 backdrop-blur-sm" : "bg-primary",
+            )}
+          >
             <p className="mx-auto max-w-7xl px-4 py-2 text-center text-xs font-medium tracking-wide">
               {announcement.text}
             </p>
@@ -87,15 +104,17 @@ export function SiteHeader() {
       <div
         className={cn(
           "border-b transition-all duration-300",
-          scrolled
-            ? "border-border bg-background/90 shadow-[0_1px_20px_rgba(60,50,35,0.06)] backdrop-blur-xl"
-            : "border-transparent bg-background",
+          transparent
+            ? "border-transparent bg-transparent"
+            : scrolled
+              ? "border-border bg-background/90 shadow-[0_1px_20px_rgba(60,50,35,0.06)] backdrop-blur-xl"
+              : "border-transparent bg-background",
         )}
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:h-20 sm:px-6">
           {/* Mobil menü */}
           <button
-            className="-ml-2 p-2 lg:hidden"
+            className={cn("-ml-2 p-2 transition-colors lg:hidden", iconClass)}
             onClick={() => setMobileOpen(true)}
             aria-label="Menüyü aç"
           >
@@ -104,7 +123,7 @@ export function SiteHeader() {
 
           {/* Logo */}
           <Link href="/" aria-label="Miamisu Home anasayfa">
-            <Logo className="h-11 sm:h-14" />
+            <Logo dark={transparent} className="h-11 sm:h-14" />
           </Link>
 
           {/* Masaüstü nav */}
@@ -114,9 +133,12 @@ export function SiteHeader() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "relative text-sm font-medium tracking-wide text-foreground/80 transition-colors hover:text-foreground",
+                  "relative text-sm font-medium tracking-wide transition-colors",
                   "after:absolute after:-bottom-1.5 after:left-0 after:h-px after:bg-accent after:transition-all after:duration-300",
-                  pathname === item.href ? "text-foreground after:w-full" : "after:w-0 hover:after:w-full",
+                  iconClass,
+                  pathname === item.href
+                    ? cn("after:w-full", transparent ? "text-white" : "text-foreground")
+                    : "after:w-0 hover:after:w-full",
                 )}
               >
                 {item.label}
@@ -127,7 +149,7 @@ export function SiteHeader() {
           {/* Sağ ikonlar */}
           <div className="flex items-center gap-0.5 sm:gap-1">
             <button
-              className="p-2 text-foreground/80 transition-colors hover:text-foreground"
+              className={cn("p-2 transition-colors", iconClass)}
               onClick={() => setSearchOpen((v) => !v)}
               aria-label="Ara"
             >
@@ -135,14 +157,14 @@ export function SiteHeader() {
             </button>
             <Link
               href="/begendiklerim"
-              className="hidden p-2 text-foreground/80 transition-colors hover:text-foreground sm:block"
+              className={cn("hidden p-2 transition-colors sm:block", iconClass)}
               aria-label="Beğendiklerim"
             >
               <Heart className="h-5 w-5" />
             </Link>
             <Link
               href={user ? "/hesabim" : "/giris"}
-              className="p-2 text-foreground/80 transition-colors hover:text-foreground"
+              className={cn("p-2 transition-colors", iconClass)}
               aria-label={user ? `Hesabım (${user.name})` : "Giriş yap"}
             >
               {user ? (
@@ -158,7 +180,7 @@ export function SiteHeader() {
             </Link>
             <Link
               href="/sepet"
-              className="relative p-2 text-foreground/80 transition-colors hover:text-foreground"
+              className={cn("relative p-2 transition-colors", iconClass)}
               aria-label="Sepet"
             >
               <ShoppingBag className="h-5 w-5" />

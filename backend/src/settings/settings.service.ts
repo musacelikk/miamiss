@@ -121,7 +121,7 @@ export const DEFAULT_SEO: SeoSettings = {
 export interface HomepageSettings {
   /** Hero arkaplani: kolaj (varsayilan), tam ekran video veya tam ekran gorsel */
   heroBackgroundType: 'collage' | 'video' | 'image';
-  /** Tam ekran video dosyasi (orn. /video/265188_medium.mp4 veya yuklenen URL) */
+  /** Tam ekran video: admin panelinden S3/CloudFront'a yuklenen kalici URL */
   heroBackgroundVideo: string;
   /** Tam ekran arkaplan gorseli */
   heroBackgroundImage: string;
@@ -155,7 +155,7 @@ export interface HomepageSettings {
 
 export const DEFAULT_HOMEPAGE: HomepageSettings = {
   heroBackgroundType: 'collage',
-  heroBackgroundVideo: '/video/265188_medium.mp4',
+  heroBackgroundVideo: '',
   heroBackgroundImage: '',
   heroOverlayOpacity: 40,
   heroEyebrow: 'Doğal Taş Ev Aksesuarları',
