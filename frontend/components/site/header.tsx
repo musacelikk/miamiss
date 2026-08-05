@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import { useAuth, useCart } from "@/components/providers"
 import { Logo } from "@/components/logo"
-import { api, type StoreSettings } from "@/lib/api"
+import { api, type HomepageSettings, type StoreSettings } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 const NAV = [
@@ -33,6 +33,7 @@ export function SiteHeader({ heroOverlay = false }: { heroOverlay?: boolean }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [announcement, setAnnouncement] = useState<{ text: string; url: string } | null>(null)
+  const [heroFull, setHeroFull] = useState(heroOverlay)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
@@ -46,6 +47,24 @@ export function SiteHeader({ heroOverlay = false }: { heroOverlay?: boolean }) {
       .then((s) =>
         setAnnouncement(
           s.announcement ? { text: s.announcement, url: s.announcementUrl ?? "" } : null,
+        ),
+      )
+      .catch(() => {})
+  }, [])
+
+  /*
+   * Sunucudan gelen deger (heroOverlay) sayfa uretilirken API'ye ulasilamamissa
+   * yanlis kalabilir; istemcide dogrulayip duzeltiyoruz.
+   */
+  useEffect(() => {
+    api<HomepageSettings>("/settings/homepage", { auth: false })
+      .then((s) =>
+        setHeroFull(
+          s.heroBackgroundType === "video"
+            ? !!s.heroBackgroundVideo
+            : s.heroBackgroundType === "image"
+              ? !!s.heroBackgroundImage
+              : false,
         ),
       )
       .catch(() => {})
@@ -65,7 +84,7 @@ export function SiteHeader({ heroOverlay = false }: { heroOverlay?: boolean }) {
   }
 
   /* Anasayfada tam ekran hero varsa header akıştan çıkar, videonun üstüne biner */
-  const overlayMode = heroOverlay && pathname === "/"
+  const overlayMode = heroFull && pathname === "/"
   /* Sayfa başındayken tamamen saydam — video arkada kesintisiz görünür */
   const transparent = overlayMode && !scrolled && !searchOpen
 
@@ -111,7 +130,7 @@ export function SiteHeader({ heroOverlay = false }: { heroOverlay?: boolean }) {
               : "border-transparent bg-background",
         )}
       >
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:h-20 sm:px-6">
+        <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:h-20 sm:px-6">
           {/* Mobil menü */}
           <button
             className={cn("-ml-2 p-2 transition-colors lg:hidden", iconClass)}
@@ -121,8 +140,12 @@ export function SiteHeader({ heroOverlay = false }: { heroOverlay?: boolean }) {
             <Menu className="h-5 w-5" />
           </button>
 
-          {/* Logo */}
-          <Link href="/" aria-label="Miamisu Home anasayfa">
+          {/* Logo — mobilde ikon sayısından bağımsız olarak tam ortada durur */}
+          <Link
+            href="/"
+            aria-label="Miamisu Home anasayfa"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 lg:static lg:translate-x-0 lg:translate-y-0"
+          >
             <Logo dark={transparent} className="h-11 sm:h-14" />
           </Link>
 
