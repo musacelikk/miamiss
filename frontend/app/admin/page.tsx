@@ -8,6 +8,7 @@ import {
   Eye,
   Gift,
   Headset,
+  Heart,
   Home,
   Loader2,
   MessageSquare,
@@ -47,6 +48,7 @@ interface Stats {
   recentOrders: Order[]
   dailySeries: { date: string; orders: number; revenue: number }[]
   topViewed: Product[]
+  topFavorited: { product: Product; count: number }[]
 }
 
 /* dataviz validasyonundan gecen renkler (tek serili iki ayri grafik) */
@@ -298,6 +300,42 @@ export default function AdminDashboard() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* En çok favorilenenler */}
+      <div className="rounded-md border border-border bg-card">
+        <div className="flex items-center gap-2 border-b border-border px-5 py-4">
+          <Heart className="h-4 w-4 text-accent" />
+          <h2 className="font-display text-xl">En Çok Favorilenen Ürünler</h2>
+        </div>
+        {(stats.topFavorited ?? []).length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+            Henüz favorilenen ürün yok.
+          </p>
+        ) : (
+          <div className="grid gap-1 p-3 sm:grid-cols-2 xl:grid-cols-4">
+            {stats.topFavorited.map(({ product: p, count }, i) => (
+              <div key={p.id} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-secondary/40">
+                <span className="w-5 text-center font-display text-lg text-muted-foreground">
+                  {i + 1}
+                </span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageUrl(p.images?.[0]?.url)}
+                  alt=""
+                  className="h-10 w-10 rounded-md object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{p.name}</p>
+                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Heart className="h-3 w-3 fill-rose-400 text-rose-400" />
+                    {count} favori
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">

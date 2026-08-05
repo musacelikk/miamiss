@@ -9,23 +9,31 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { IsInt, IsString, Max, Min, MinLength } from 'class-validator';
+import { IsNull, Repository } from 'typeorm';
+import { IsInt, IsOptional, IsString, IsUUID, Max, Min, MinLength, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Review } from '../entities';
 import { ProductsService } from './products.service';
 import { CurrentUser, JwtAuthGuard, type AuthUser } from '../auth/guards';
+import { MailService } from '../mail/mail.service';
 
 class CreateReviewDto {
+  /** Yanitlarda puan gonderilmez */
+  @ValidateIf((o: CreateReviewDto) => !o.parentId)
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(5)
-  rating: number;
+  rating?: number;
 
   @IsString()
   @MinLength(3)
   comment: string;
+
+  /** Doluysa bu bir yanittir: ayni urundeki bir yoruma baglanir */
+  @IsOptional()
+  @IsUUID()
+  parentId?: string;
 }
 
 @Controller()
@@ -33,6 +41,7 @@ export class ProductsController {
   constructor(
     private readonly service: ProductsService,
     @InjectRepository(Review) private readonly reviews: Repository<Review>,
+    private readonly mail: MailService,
   ) {}
 
   @Get('products')
@@ -66,20 +75,57 @@ export class ProductsController {
     @Param('slug') slug: string,
     @Body() dto: CreateReviewDto,
   ) {
-    const product = await this.service.bySlug(slug);
+    const product = await this.service.bySlug(slug, false);
+
+    // Yanit: ayni urundeki bir yoruma baglanir; ic ice tek seviye tutulur
+    if (dto.parentId) {
+      const parent = await this.reviews.findOne({
+        where: { id: dto.parentId, productId: product.id, isApproved: true },
+      });
+      if (!parent) throw new BadRequestException('Yanıtlanacak yorum bulunamadı.');
+      await this.reviews.save(
+        this.reviews.create({
+          productId: product.id,
+          userId: user!.id,
+          parentId: parent.parentId ?? parent.id,
+          rating: null,
+          comment: dto.comment,
+          isApproved: true,
+        }),
+      );
+      this.mail.reviewCreatedAdmin({
+        productName: product.name,
+        userName: user!.email,
+        rating: null,
+        comment: dto.comment,
+        isReply: true,
+      });
+      return { ok: true, message: 'Yanıtınız yayınlandı.' };
+    }
+
     const existing = await this.reviews.findOne({
-      where: { productId: product.id, userId: user!.id },
+      where: { productId: product.id, userId: user!.id, parentId: IsNull() },
     });
-    if (existing) throw new BadRequestException('Bu ürüne zaten yorum yaptınız.');
+    if (existing) {
+      throw new BadRequestException('Bu ürüne zaten yorum yaptınız.');
+    }
     await this.reviews.save(
       this.reviews.create({
         productId: product.id,
         userId: user!.id,
         rating: dto.rating,
         comment: dto.comment,
+        isApproved: true,
       }),
     );
-    return { ok: true, message: 'Yorumunuz onaya gönderildi.' };
+    this.mail.reviewCreatedAdmin({
+      productName: product.name,
+      userName: user!.email,
+      rating: dto.rating ?? null,
+      comment: dto.comment,
+      isReply: false,
+    });
+    return { ok: true, message: 'Yorumunuz yayınlandı. Teşekkürler!' };
   }
 
   @Get('categories')

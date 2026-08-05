@@ -149,10 +149,12 @@ class ProductDto {
   @Min(0)
   shippingFee?: number | null;
 
+  /** Varyantli urunlerde bos gelebilir — en dusuk secenek fiyatindan turetilir */
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  price: number;
+  price?: number;
 
   @IsOptional()
   @Type(() => Number)
@@ -160,10 +162,12 @@ class ProductDto {
   @Min(0)
   compareAtPrice?: number | null;
 
+  /** Varyantli urunlerde bos gelebilir — seceneklerin toplamindan turetilir */
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  stock: number;
+  stock?: number;
 
   @IsOptional()
   @IsBoolean()
@@ -314,11 +318,16 @@ export class AdminProductsController {
    * turetilir: stok = toplam, fiyat = en dusuk secenek fiyati.
    */
   private deriveFromVariants(data: {
-    price: number;
+    price?: number;
     compareAtPrice?: number | null;
-    stock: number;
+    stock?: number;
   }, variants?: VariantDto[]) {
-    if (!variants?.length) return data;
+    if (!variants?.length) {
+      if (data.price == null) {
+        throw new BadRequestException('Fiyat gerekli — ürün fiyatını girin veya seçenek ekleyin.');
+      }
+      return { ...data, price: data.price, stock: data.stock ?? 0 };
+    }
     const cheapest = variants.reduce((a, b) => (a.price <= b.price ? a : b));
     return {
       ...data,
@@ -495,13 +504,32 @@ export class AdminProductsController {
     body: {
       productId: string;
       displayName: string;
-      rating: number;
+      rating?: number;
       comment: string;
       isApproved?: boolean;
+      /** Doluysa bu bir yanittir (puan tutulmaz) */
+      parentId?: string;
     },
   ) {
     const product = await this.products.findOne({ where: { id: body.productId } });
     if (!product) throw new NotFoundException('Ürün bulunamadı.');
+    if (body.parentId) {
+      const parent = await this.reviews.findOne({
+        where: { id: body.parentId, productId: body.productId },
+      });
+      if (!parent) throw new NotFoundException('Yanıtlanacak yorum bulunamadı.');
+      return this.reviews.save(
+        this.reviews.create({
+          productId: body.productId,
+          userId: null,
+          displayName: (body.displayName || 'Miamisu Home').trim(),
+          parentId: parent.parentId ?? parent.id,
+          rating: null,
+          comment: body.comment,
+          isApproved: true,
+        }),
+      );
+    }
     const rating = Math.min(5, Math.max(1, Math.round(Number(body.rating) || 5)));
     return this.reviews.save(
       this.reviews.create({

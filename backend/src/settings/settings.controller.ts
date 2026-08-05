@@ -5,6 +5,9 @@ import { LogsService } from '../logs/logs.service';
 import {
   SettingsService,
   type HomepageSettings,
+  type NotificationSettings,
+  type PuzzleSettings,
+  type SeoSettings,
   type StoreSettings,
 } from './settings.service';
 
@@ -23,6 +26,25 @@ export class SettingsController {
   @Get('settings/homepage')
   getHomepage() {
     return this.settings.getHomepage();
+  }
+
+  @Get('settings/seo')
+  getSeo() {
+    return this.settings.getSeo();
+  }
+
+  @Get('admin/settings/puzzle')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  getPuzzle() {
+    return this.settings.getPuzzle();
+  }
+
+  @Get('admin/settings/notifications')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  getNotifications() {
+    return this.settings.getNotifications();
   }
 
   @Put('admin/settings')
@@ -51,5 +73,50 @@ export class SettingsController {
       detail: 'Anasayfa içeriği güncellendi',
     });
     return this.settings.updateHomepage(patch);
+  }
+
+  @Put('admin/settings/puzzle')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  updatePuzzle(@Body() patch: Partial<PuzzleSettings>, @CurrentUser() admin: AuthUser) {
+    this.logs.record({
+      userId: admin!.id,
+      email: admin!.email,
+      actorType: 'ADMIN',
+      action: 'settings.puzzle',
+      detail: 'Bulmaca ödül ayarları güncellendi',
+    });
+    return this.settings.updatePuzzle(patch);
+  }
+
+  @Put('admin/settings/notifications')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  updateNotifications(
+    @Body() patch: Partial<NotificationSettings>,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    this.logs.record({
+      userId: admin!.id,
+      email: admin!.email,
+      actorType: 'ADMIN',
+      action: 'settings.notifications',
+      detail: 'Bildirim ayarları güncellendi',
+    });
+    return this.settings.updateNotifications(patch);
+  }
+
+  @Put('admin/settings/seo')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  updateSeo(@Body() patch: Partial<SeoSettings>, @CurrentUser() admin: AuthUser) {
+    this.logs.record({
+      userId: admin!.id,
+      email: admin!.email,
+      actorType: 'ADMIN',
+      action: 'settings.seo',
+      detail: 'SEO ayarları güncellendi',
+    });
+    return this.settings.updateSeo(patch);
   }
 }

@@ -49,8 +49,84 @@ export const DEFAULT_SETTINGS: StoreSettings = {
 
 const KEY = 'store';
 const HOMEPAGE_KEY = 'homepage';
+const PUZZLE_KEY = 'puzzle';
+const NOTIFICATIONS_KEY = 'notifications';
+const SEO_KEY = 'seo';
+
+/** Bulmaca odul kuponu ayarlari */
+export interface PuzzleSettings {
+  /** Indirim yuzdesi */
+  rewardPercent: number;
+  /** Kodun gecerlilik suresi (gun) */
+  rewardValidityDays: number;
+  /** Kodun kac kez kullanilabilecegi */
+  rewardMaxUses: number;
+}
+
+export const DEFAULT_PUZZLE: PuzzleSettings = {
+  rewardPercent: 10,
+  rewardValidityDays: 7,
+  rewardMaxUses: 1,
+};
+
+/** Hangi olayda adminlere mail gonderilecegi */
+export interface NotificationSettings {
+  orderCreated: boolean;
+  returnRequested: boolean;
+  stockDepleted: boolean;
+  newUser: boolean;
+  reviewCreated: boolean;
+  contactMessage: boolean;
+  supportTicket: boolean;
+}
+
+export const DEFAULT_NOTIFICATIONS: NotificationSettings = {
+  orderCreated: true,
+  returnRequested: true,
+  stockDepleted: true,
+  newUser: true,
+  reviewCreated: true,
+  contactMessage: true,
+  supportTicket: true,
+};
+
+/** Site geneli SEO ve pazarlama etiketi ayarlari */
+export interface SeoSettings {
+  siteTitle: string;
+  siteDescription: string;
+  keywords: string;
+  ogImage: string;
+  googleSiteVerification: string;
+  /** GA4 olcum kimligi (G-XXXX) */
+  googleAnalyticsId: string;
+  /** Google Ads donusum kimligi (AW-XXXX) */
+  googleAdsId: string;
+  /** Meta (Facebook) Pixel kimligi */
+  metaPixelId: string;
+}
+
+export const DEFAULT_SEO: SeoSettings = {
+  siteTitle: 'Miamisu Home — Doğal Taş Ev Aksesuarları',
+  siteDescription:
+    'Doğal traverten ve mermerden el işçiliğiyle üretilen mumluklar, vazolar, tepsiler ve ev aksesuarları. Her parça tektir.',
+  keywords:
+    'traverten, mermer, doğal taş, mumluk, vazo, ev aksesuarları, el işçiliği, dekorasyon',
+  ogImage: '/logo/logo.png',
+  googleSiteVerification: '',
+  googleAnalyticsId: '',
+  googleAdsId: '',
+  metaPixelId: '',
+};
 
 export interface HomepageSettings {
+  /** Hero arkaplani: kolaj (varsayilan), tam ekran video veya tam ekran gorsel */
+  heroBackgroundType: 'collage' | 'video' | 'image';
+  /** Tam ekran video dosyasi (orn. /video/265188_medium.mp4 veya yuklenen URL) */
+  heroBackgroundVideo: string;
+  /** Tam ekran arkaplan gorseli */
+  heroBackgroundImage: string;
+  /** Arkaplan uzerindeki karartma orani (0-80) */
+  heroOverlayOpacity: number;
   heroEyebrow: string;
   heroTitle: string;
   heroTitleAccent: string;
@@ -78,6 +154,10 @@ export interface HomepageSettings {
 }
 
 export const DEFAULT_HOMEPAGE: HomepageSettings = {
+  heroBackgroundType: 'collage',
+  heroBackgroundVideo: '/video/265188_medium.mp4',
+  heroBackgroundImage: '',
+  heroOverlayOpacity: 40,
   heroEyebrow: 'Doğal Taş Ev Aksesuarları',
   heroTitle: 'Taşın zamansız',
   heroTitleAccent: 'zarafeti',
@@ -143,6 +223,39 @@ export class SettingsService {
     const current = await this.getHomepage();
     const next = { ...current, ...patch };
     await this.repo.save(this.repo.create({ key: HOMEPAGE_KEY, value: next }));
+    return next;
+  }
+
+  async getPuzzle(): Promise<PuzzleSettings> {
+    const row = await this.repo.findOne({ where: { key: PUZZLE_KEY } });
+    return { ...DEFAULT_PUZZLE, ...((row?.value as Partial<PuzzleSettings>) ?? {}) };
+  }
+
+  async updatePuzzle(patch: Partial<PuzzleSettings>): Promise<PuzzleSettings> {
+    const next = { ...(await this.getPuzzle()), ...patch };
+    await this.repo.save(this.repo.create({ key: PUZZLE_KEY, value: next }));
+    return next;
+  }
+
+  async getNotifications(): Promise<NotificationSettings> {
+    const row = await this.repo.findOne({ where: { key: NOTIFICATIONS_KEY } });
+    return { ...DEFAULT_NOTIFICATIONS, ...((row?.value as Partial<NotificationSettings>) ?? {}) };
+  }
+
+  async updateNotifications(patch: Partial<NotificationSettings>): Promise<NotificationSettings> {
+    const next = { ...(await this.getNotifications()), ...patch };
+    await this.repo.save(this.repo.create({ key: NOTIFICATIONS_KEY, value: next }));
+    return next;
+  }
+
+  async getSeo(): Promise<SeoSettings> {
+    const row = await this.repo.findOne({ where: { key: SEO_KEY } });
+    return { ...DEFAULT_SEO, ...((row?.value as Partial<SeoSettings>) ?? {}) };
+  }
+
+  async updateSeo(patch: Partial<SeoSettings>): Promise<SeoSettings> {
+    const next = { ...(await this.getSeo()), ...patch };
+    await this.repo.save(this.repo.create({ key: SEO_KEY, value: next }));
     return next;
   }
 }

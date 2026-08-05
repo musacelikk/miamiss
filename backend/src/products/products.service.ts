@@ -61,6 +61,8 @@ export class ProductsService {
       .addSelect('AVG(r.rating)', 'avg')
       .addSelect('COUNT(*)', 'count')
       .where('r.isApproved = true')
+      .andWhere('r.parentId IS NULL')
+      .andWhere('r.rating IS NOT NULL')
       .andWhere('r.productId IN (:...ids)', { ids: items.map((i) => i.id) })
       .groupBy('r.productId')
       .getRawMany();
@@ -87,7 +89,7 @@ export class ProductsService {
       where: { productId: product.id, isApproved: true },
       relations: { user: true },
       order: { createdAt: 'DESC' },
-      take: 50,
+      take: 200,
     });
     const [withRating] = await this.attachRatings([product]);
     const related = await this.products.find({
@@ -95,14 +97,25 @@ export class ProductsService {
       relations: { images: true, category: true },
       take: 5,
     });
+    // Yorumlari iki seviyeli agaca cevir: ust yorumlar (yeniden eskiye) + yanitlari (eskiden yeniye)
+    const toDto = (r: Review) => ({
+      id: r.id,
+      rating: r.rating,
+      comment: r.comment,
+      createdAt: r.createdAt,
+      userName: r.displayName ?? r.user?.name?.split(' ')[0] ?? 'Müşteri',
+      isAdmin: r.displayName != null,
+    });
+    const topLevel = reviews.filter((r) => !r.parentId);
+    const replies = reviews.filter((r) => r.parentId);
     return {
       ...withRating,
-      reviews: reviews.map((r) => ({
-        id: r.id,
-        rating: r.rating,
-        comment: r.comment,
-        createdAt: r.createdAt,
-        userName: r.displayName ?? r.user?.name?.split(' ')[0] ?? 'Müşteri',
+      reviews: topLevel.map((r) => ({
+        ...toDto(r),
+        replies: replies
+          .filter((rep) => rep.parentId === r.id)
+          .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+          .map(toDto),
       })),
       related: related.filter((p) => p.id !== product.id).slice(0, 4),
     };

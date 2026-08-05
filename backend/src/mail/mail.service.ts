@@ -1,7 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import { Role, User } from '../entities';
+import {
+  SettingsService,
+  type NotificationSettings,
+} from '../settings/settings.service';
 
 /** Kullanici metnini e-posta HTML'ine gomerken kacisla (XSS/bozulma onlemi). */
 function escapeHtml(text: string): string {
@@ -23,7 +30,11 @@ export class MailService {
   private readonly from: string;
   private readonly siteUrl: string;
 
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly settings: SettingsService,
+    @InjectRepository(User) private readonly usersRepo: Repository<User>,
+  ) {
     const host = config.get<string>('SMTP_HOST');
     const user = config.get<string>('SMTP_USER');
     const pass = config.get<string>('SMTP_PASS');
@@ -79,6 +90,46 @@ export class MailService {
     </p>
   </div>
 </body></html>`;
+  }
+
+  /**
+   * Olay bazli admin bildirimi: ayarlar panelinden acik/kapali yonetilir.
+   * Acik ise tum ADMIN rolundeki kullanicilara (+ SUPPORT_EMAIL) gonderilir.
+   * Hata firlatmaz, akisi bloklamaz.
+   */
+  async notifyAdmins(
+    event: keyof NotificationSettings,
+    subject: string,
+    html: string,
+  ): Promise<void> {
+    try {
+      const cfg = await this.settings.getNotifications();
+      if (!cfg[event]) return;
+      const admins = await this.usersRepo.find({
+        where: { role: Role.ADMIN },
+        select: { email: true },
+      });
+      const recipients = new Set(admins.map((a) => a.email).filter(Boolean));
+      if (process.env.SUPPORT_EMAIL) recipients.add(process.env.SUPPORT_EMAIL);
+      if (!recipients.size) {
+        this.logger.warn(`[ADMIN MAIL] alıcı yok (event=${event})`);
+        return;
+      }
+      for (const to of recipients) this.send(to, subject, html);
+    } catch (err) {
+      this.logger.error(
+        `[ADMIN MAIL FAIL] event=${event}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+
+  private adminUrl(): string {
+    return process.env.ADMIN_URL ?? 'https://admin.miamisuhome.com';
+  }
+
+  private adminButton(path: string, text: string): string {
+    return `<p style="margin:20px 0 0;"><a href="${this.adminUrl()}${path}"
+      style="background:#2e2925;color:#fff;padding:11px 24px;border-radius:4px;text-decoration:none;font-size:14px;">${text}</a></p>`;
   }
 
   /* ---- Hazir sablonlar ---- */
@@ -206,7 +257,7 @@ export class MailService {
       );
   }
 
-  /** Destek kutusuna dusen yeni mesaji isletmeciye haber verir. */
+  /** Destek kutusuna dusen yeni mesaji adminlere haber verir (ayarlardan yonetilir). */
   supportNotifyAdmin(ticket: {
     ticketNo: string;
     subject: string;
@@ -215,14 +266,8 @@ export class MailService {
     orderNo?: string | null;
     body: string;
   }): void {
-    const to = process.env.SUPPORT_EMAIL;
-    if (!to) {
-      this.logger.warn('SUPPORT_EMAIL tanımlı değil, destek bildirimi gönderilemedi');
-      return;
-    }
-    const adminUrl = process.env.ADMIN_URL ?? 'https://admin.miamisuhome.com';
-    this.send(
-      to,
+    void this.notifyAdmins(
+      'supportTicket',
       `Yeni destek mesajı — ${ticket.ticketNo}`,
       `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Yeni Destek Mesajı</h2>
        <p style="font-size:14px;margin:0 0 4px;"><strong>${ticket.subject}</strong></p>
@@ -231,8 +276,7 @@ export class MailService {
          · Talep No: ${ticket.ticketNo}
        </p>
        <div style="background:#f7f4ee;border-radius:6px;padding:16px;font-size:14px;white-space:pre-wrap;">${escapeHtml(ticket.body)}</div>
-       <p style="margin:20px 0 0;"><a href="${adminUrl}/destek"
-          style="background:#2e2925;color:#fff;padding:11px 24px;border-radius:4px;text-decoration:none;font-size:14px;">Panelden Yanıtla</a></p>`,
+       ${this.adminButton('/destek', 'Panelden Yanıtla')}`,
     );
   }
 
@@ -255,7 +299,7 @@ export class MailService {
     );
   }
 
-  /** Yeni iade talebini isletmeciye bildirir. */
+  /** Yeni iade talebini adminlere bildirir (ayarlardan yonetilir). */
   returnNotifyAdmin(req: {
     returnNo: string;
     orderNo: string;
@@ -264,11 +308,8 @@ export class MailService {
     description: string;
     imageCount: number;
   }): void {
-    const to = process.env.SUPPORT_EMAIL;
-    if (!to) return;
-    const adminUrl = process.env.ADMIN_URL ?? 'https://admin.miamisuhome.com';
-    this.send(
-      to,
+    void this.notifyAdmins(
+      'returnRequested',
       `Yeni iade talebi — ${req.returnNo}`,
       `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Yeni İade Talebi</h2>
        <p style="font-size:13px;color:#9b9184;margin:0 0 14px;">
@@ -276,8 +317,101 @@ export class MailService {
        </p>
        <p style="font-size:14px;"><strong>Sebep:</strong> ${req.reason}</p>
        <div style="background:#f7f4ee;border-radius:6px;padding:16px;font-size:14px;white-space:pre-wrap;">${escapeHtml(req.description)}</div>
-       <p style="margin:20px 0 0;"><a href="${adminUrl}/iadeler"
-          style="background:#2e2925;color:#fff;padding:11px 24px;border-radius:4px;text-decoration:none;font-size:14px;">Panelden İncele</a></p>`,
+       ${this.adminButton('/iadeler', 'Panelden İncele')}`,
+    );
+  }
+
+  /** Yeni siparisi adminlere bildirir. */
+  orderCreatedAdmin(order: {
+    orderNo: string;
+    email: string;
+    shippingName: string;
+    grandTotal: number;
+    paymentMethod: string;
+    items: { name: string; quantity: number }[];
+  }): void {
+    const rows = order.items
+      .map((i) => `<li style="font-size:14px;margin:2px 0;">${escapeHtml(i.name)} × ${i.quantity}</li>`)
+      .join('');
+    void this.notifyAdmins(
+      'orderCreated',
+      `🛒 Yeni sipariş — ${order.orderNo} (${order.grandTotal.toLocaleString('tr-TR')} ₺)`,
+      `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Yeni Sipariş Geldi 🎉</h2>
+       <p style="font-size:13px;color:#9b9184;margin:0 0 14px;">
+         ${escapeHtml(order.shippingName)} · ${order.email} · ${order.paymentMethod}
+       </p>
+       <ul style="padding-left:18px;margin:0;">${rows}</ul>
+       <p style="font-size:15px;margin-top:12px;">Toplam: <strong>${order.grandTotal.toLocaleString('tr-TR')} ₺</strong></p>
+       ${this.adminButton('/siparisler', 'Siparişi Görüntüle')}`,
+    );
+  }
+
+  /** Yeni uye kaydini adminlere bildirir. */
+  newUserAdmin(user: { name: string; email: string; via?: string }): void {
+    void this.notifyAdmins(
+      'newUser',
+      `Yeni üye kaydı — ${user.name}`,
+      `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Yeni Üye 👋</h2>
+       <p style="font-size:14px;">${escapeHtml(user.name)} (${user.email}) siteye üye oldu${user.via ? ` (${user.via})` : ''}.</p>
+       ${this.adminButton('/uyeler', 'Üyeleri Görüntüle')}`,
+    );
+  }
+
+  /** Yeni urun yorumunu adminlere bildirir. */
+  reviewCreatedAdmin(review: {
+    productName: string;
+    userName: string;
+    rating: number | null;
+    comment: string;
+    isReply: boolean;
+  }): void {
+    void this.notifyAdmins(
+      'reviewCreated',
+      `Yeni ${review.isReply ? 'yorum yanıtı' : 'yorum'} — ${review.productName}`,
+      `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Yeni ${review.isReply ? 'Yorum Yanıtı' : 'Ürün Yorumu'} 💬</h2>
+       <p style="font-size:13px;color:#9b9184;margin:0 0 14px;">
+         ${escapeHtml(review.userName)} · ${escapeHtml(review.productName)}${review.rating ? ` · ${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}` : ''}
+       </p>
+       <div style="background:#f7f4ee;border-radius:6px;padding:16px;font-size:14px;white-space:pre-wrap;">${escapeHtml(review.comment)}</div>
+       ${this.adminButton('/yorumlar', 'Yorumları Yönet')}`,
+    );
+  }
+
+  /** Iletisim formundan gelen mesaji adminlere bildirir. */
+  contactMessageAdmin(msg: {
+    name: string;
+    email: string;
+    subject?: string | null;
+    message: string;
+  }): void {
+    void this.notifyAdmins(
+      'contactMessage',
+      `Yeni iletişim mesajı — ${msg.name}`,
+      `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Yeni İletişim Mesajı ✉️</h2>
+       <p style="font-size:13px;color:#9b9184;margin:0 0 14px;">
+         ${escapeHtml(msg.name)} · ${msg.email}${msg.subject ? ` · ${escapeHtml(msg.subject)}` : ''}
+       </p>
+       <div style="background:#f7f4ee;border-radius:6px;padding:16px;font-size:14px;white-space:pre-wrap;">${escapeHtml(msg.message)}</div>
+       ${this.adminButton('/mesajlar', 'Panelden Yanıtla')}`,
+    );
+  }
+
+  /** Stogu tukenen urunu adminlere bildirir. */
+  stockDepletedAdmin(products: { name: string; sku?: string | null }[]): void {
+    if (!products.length) return;
+    const rows = products
+      .map(
+        (p) =>
+          `<li style="font-size:14px;margin:2px 0;">${escapeHtml(p.name)}${p.sku ? ` <span style="font-family:monospace;color:#9b9184;">(${p.sku})</span>` : ''}</li>`,
+      )
+      .join('');
+    void this.notifyAdmins(
+      'stockDepleted',
+      `⚠️ Stok tükendi — ${products.length} ürün`,
+      `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">Stok Tükendi ⚠️</h2>
+       <p style="font-size:14px;">Aşağıdaki ürünlerin stoğu tükendi, satışta görünmeye devam ediyor ancak sepete eklenemez:</p>
+       <ul style="padding-left:18px;margin:10px 0 0;">${rows}</ul>
+       ${this.adminButton('/urunler', 'Stokları Güncelle')}`,
     );
   }
 

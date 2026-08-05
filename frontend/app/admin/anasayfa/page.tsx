@@ -198,6 +198,93 @@ export default function AdminHomepagePage() {
           </div>
         </div>
 
+        {/* Hero arkaplan tipi */}
+        <div className="mt-6 rounded-md border border-dashed border-accent/40 bg-secondary/30 p-4">
+          <label className={label}>Hero Arkaplanı</label>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ["collage", "Görsel Kolajı (klasik)"],
+                ["video", "Tam Ekran Video"],
+                ["image", "Tam Ekran Görsel"],
+              ] as const
+            ).map(([value, text]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setHp({ ...hp, heroBackgroundType: value })}
+                className={
+                  "rounded-md border px-4 py-2 text-xs font-semibold transition-colors " +
+                  ((hp.heroBackgroundType ?? "collage") === value
+                    ? "border-accent bg-accent/10 text-accent"
+                    : "border-border bg-background text-muted-foreground hover:border-accent hover:text-accent")
+                }
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+
+          {hp.heroBackgroundType === "video" && (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className={label}>Video Dosyası (URL veya /video/... yolu)</label>
+                <input
+                  value={hp.heroBackgroundVideo}
+                  onChange={set("heroBackgroundVideo")}
+                  className={input}
+                  placeholder="/video/265188_medium.mp4"
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Video dosyalarını sitenin <code>public/video/</code> klasörüne ekleyip yolunu
+                  buraya yazabilirsin (örn. <code>/video/tanitim.mp4</code>) veya harici bir
+                  video adresi kullanabilirsin. Önerilen: mp4, 1080p, 10 MB altı.
+                </p>
+              </div>
+              <div>
+                <label className={label}>Video Yüklenene Kadar Gösterilecek Görsel (poster)</label>
+                <ImagePicker
+                  value={hp.heroBackgroundImage || null}
+                  onChange={(url) => setHp({ ...hp, heroBackgroundImage: url ?? "" })}
+                  aspect="aspect-video"
+                />
+              </div>
+            </div>
+          )}
+
+          {hp.heroBackgroundType === "image" && (
+            <div className="mt-4">
+              <label className={label}>Tam Ekran Arkaplan Görseli</label>
+              <div className="max-w-md">
+                <ImagePicker
+                  value={hp.heroBackgroundImage || null}
+                  onChange={(url) => setHp({ ...hp, heroBackgroundImage: url ?? "" })}
+                  aspect="aspect-video"
+                />
+              </div>
+            </div>
+          )}
+
+          {(hp.heroBackgroundType === "video" || hp.heroBackgroundType === "image") && (
+            <div className="mt-4 max-w-md">
+              <label className={label}>
+                Karartma Oranı: %{hp.heroOverlayOpacity ?? 40} (yazının okunması için)
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={80}
+                step={5}
+                value={hp.heroOverlayOpacity ?? 40}
+                onChange={(e) =>
+                  setHp({ ...hp, heroOverlayOpacity: Number(e.target.value) })
+                }
+                className="w-full accent-[oklch(0.63_0.065_75)]"
+              />
+            </div>
+          )}
+        </div>
+
         <label className={`${label} mt-5`}>
           Hero Görselleri (sabit 4 adet — tıklayıp yenisiyle değiştirin)
         </label>

@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 import { BlogPost, Role } from '../entities';
 import { CurrentUser, JwtAuthGuard, Roles, RolesGuard, type AuthUser } from '../auth/guards';
 import { slugify } from '../products/admin-products.controller';
@@ -29,6 +29,10 @@ class BlogPostDto {
   @IsOptional()
   @IsString()
   content?: string;
+
+  @IsOptional()
+  @IsIn(['TEXT', 'MARKDOWN', 'HTML'])
+  format?: 'TEXT' | 'MARKDOWN' | 'HTML';
 
   @IsOptional()
   @IsString()

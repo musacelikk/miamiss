@@ -124,6 +124,9 @@ export function ProductDetailClient({ slug }: { slug: string }) {
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewComment, setReviewComment] = useState("")
   const [reviewBusy, setReviewBusy] = useState(false)
+  const [replyTo, setReplyTo] = useState<string | null>(null)
+  const [replyComment, setReplyComment] = useState("")
+  const [replyBusy, setReplyBusy] = useState(false)
 
   useEffect(() => {
     setProduct(null)
@@ -187,6 +190,12 @@ export function ProductDetailClient({ slug }: { slug: string }) {
     )
   }
 
+  /** Yorum/yanit sonrasi listeyi tazeler (goruntulenme sayaci artmadan) */
+  const refetchReviews = () =>
+    api<ProductDetail>(`/products/${slug}?track=0`, { auth: false })
+      .then(setProduct)
+      .catch(() => {})
+
   const submitReview = async (e: React.FormEvent) => {
     e.preventDefault()
     setReviewBusy(true)
@@ -197,10 +206,33 @@ export function ProductDetailClient({ slug }: { slug: string }) {
       })
       toast.success(res.message)
       setReviewComment("")
+      void refetchReviews()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Yorum gönderilemedi")
     } finally {
       setReviewBusy(false)
+    }
+  }
+
+  const submitReply = async (parentId: string) => {
+    if (replyComment.trim().length < 3) {
+      toast.error("Yanıt en az 3 karakter olmalı")
+      return
+    }
+    setReplyBusy(true)
+    try {
+      const res = await api<{ message: string }>(`/products/${slug}/reviews`, {
+        method: "POST",
+        body: JSON.stringify({ comment: replyComment, parentId }),
+      })
+      toast.success(res.message)
+      setReplyTo(null)
+      setReplyComment("")
+      void refetchReviews()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Yanıt gönderilemedi")
+    } finally {
+      setReplyBusy(false)
     }
   }
 
@@ -549,9 +581,76 @@ export function ProductDetailClient({ slug }: { slug: string }) {
                         <p className="text-xs text-muted-foreground">{formatDate(r.createdAt)}</p>
                       </div>
                     </div>
-                    <Stars value={r.rating} />
+                    <Stars value={r.rating ?? 0} />
                   </div>
                   <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{r.comment}</p>
+
+                  {/* Yanıtlar */}
+                  {(r.replies ?? []).length > 0 && (
+                    <div className="mt-4 space-y-3 border-l-2 border-accent/30 pl-4">
+                      {(r.replies ?? []).map((rep) => (
+                        <div key={rep.id}>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-semibold">{rep.userName}</span>
+                            {rep.isAdmin && (
+                              <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent">
+                                Mağaza
+                              </span>
+                            )}
+                            <span className="text-[11px] text-muted-foreground">
+                              {formatDate(rep.createdAt)}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                            {rep.comment}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Yanıt yaz */}
+                  {user &&
+                    (replyTo === r.id ? (
+                      <div className="mt-3">
+                        <textarea
+                          value={replyComment}
+                          onChange={(e) => setReplyComment(e.target.value)}
+                          rows={2}
+                          autoFocus
+                          placeholder="Yanıtınız..."
+                          className="w-full rounded-md border border-border bg-background p-2.5 text-sm outline-none focus:border-accent"
+                        />
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            type="button"
+                            disabled={replyBusy}
+                            onClick={() => void submitReply(r.id)}
+                            className="h-8 rounded-md bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-accent disabled:opacity-50"
+                          >
+                            {replyBusy ? "Gönderiliyor..." : "Yanıtla"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReplyTo(null)}
+                            className="h-8 rounded-md border border-border px-4 text-xs font-semibold text-muted-foreground"
+                          >
+                            Vazgeç
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplyTo(r.id)
+                          setReplyComment("")
+                        }}
+                        className="mt-3 text-xs font-semibold text-accent hover:underline"
+                      >
+                        Yanıtla
+                      </button>
+                    ))}
                 </div>
               ))
             )}
@@ -594,7 +693,7 @@ export function ProductDetailClient({ slug }: { slug: string }) {
                   {reviewBusy ? "Gönderiliyor..." : "Gönder"}
                 </button>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Yorumunuz onaylandıktan sonra yayınlanır.
+                  Yorumunuz anında yayınlanır.
                 </p>
               </form>
             ) : (

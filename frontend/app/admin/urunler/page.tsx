@@ -21,7 +21,7 @@ import {
   type Product,
   type StoreSettings,
 } from "@/lib/api"
-import { formatPrice } from "@/lib/format"
+import { formatPrice, parseDecimal } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { ImagePicker } from "@/components/admin/image-picker"
 
@@ -228,8 +228,34 @@ export default function AdminProductsPage() {
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form) return
+    const namedVariants = form.variants.filter((v) => v.name.trim())
+    const hasVariants = namedVariants.length > 0
+    // Fiyat doğrulama — virgüllü giriş (19,90) destekli
+    if (hasVariants) {
+      for (const v of namedVariants) {
+        const p = parseDecimal(v.price)
+        if (!Number.isFinite(p) || p <= 0) {
+          toast.error(`"${v.name.trim()}" seçeneği için geçerli bir fiyat girin (ör. 19,90)`)
+          return
+        }
+      }
+    } else {
+      const p = parseDecimal(form.price)
+      if (!Number.isFinite(p) || p <= 0) {
+        toast.error("Geçerli bir fiyat girin (ör. 19,90)")
+        return
+      }
+    }
     setBusy(true)
     try {
+      const variantPayload = namedVariants.map((v) => ({
+        name: v.name.trim(),
+        price: parseDecimal(v.price),
+        compareAtPrice: v.compareAtPrice ? parseDecimal(v.compareAtPrice) : undefined,
+        stock: parseInt(v.stock, 10) || 0,
+        sku: v.sku.trim() || undefined,
+        image: v.image ?? undefined,
+      }))
       const payload = {
         name: form.name,
         description: form.description,
@@ -240,29 +266,26 @@ export default function AdminProductsPage() {
         origin: form.origin || undefined,
         features: form.features || undefined,
         boxContents: form.boxContents || undefined,
-        widthCm: form.widthCm ? parseFloat(form.widthCm) : undefined,
-        heightCm: form.heightCm ? parseFloat(form.heightCm) : undefined,
-        depthCm: form.depthCm ? parseFloat(form.depthCm) : undefined,
-        weightKg: form.weightKg ? parseFloat(form.weightKg) : undefined,
-        shippingFee: form.shippingFee ? parseFloat(form.shippingFee) : undefined,
+        widthCm: form.widthCm ? parseDecimal(form.widthCm) : undefined,
+        heightCm: form.heightCm ? parseDecimal(form.heightCm) : undefined,
+        depthCm: form.depthCm ? parseDecimal(form.depthCm) : undefined,
+        weightKg: form.weightKg ? parseDecimal(form.weightKg) : undefined,
+        shippingFee: form.shippingFee ? parseDecimal(form.shippingFee) : undefined,
         sku: form.sku.trim() || undefined,
-        price: parseFloat(form.price),
-        compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : undefined,
-        stock: parseInt(form.stock, 10) || 0,
+        // Varyantlı üründe temel fiyat/stok seçeneklerden türetilir (backend de aynı hesabı yapar)
+        price: hasVariants
+          ? Math.min(...variantPayload.map((v) => v.price))
+          : parseDecimal(form.price),
+        compareAtPrice:
+          !hasVariants && form.compareAtPrice ? parseDecimal(form.compareAtPrice) : undefined,
+        stock: hasVariants
+          ? variantPayload.reduce((sum, v) => sum + v.stock, 0)
+          : parseInt(form.stock, 10) || 0,
         isActive: form.isActive,
         isFeatured: form.isFeatured,
         categoryId: form.categoryId || undefined,
         imageUrls: form.imageUrls,
-        variants: form.variants
-          .filter((v) => v.name.trim())
-          .map((v) => ({
-            name: v.name.trim(),
-            price: parseFloat(v.price) || 0,
-            compareAtPrice: v.compareAtPrice ? parseFloat(v.compareAtPrice) : undefined,
-            stock: parseInt(v.stock, 10) || 0,
-            sku: v.sku.trim() || undefined,
-            image: v.image ?? undefined,
-          })),
+        variants: variantPayload,
       }
       if (form.id) {
         await api(`/admin/products/${form.id}`, { method: "PATCH", body: JSON.stringify(payload) })
@@ -376,9 +399,8 @@ export default function AdminProductsPage() {
                 </label>
                 <input
                   required
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   disabled={formHasVariants}
                   value={
                     formHasVariants
@@ -386,13 +408,17 @@ export default function AdminProductsPage() {
                           Math.min(
                             ...form.variants
                               .filter((v) => v.name.trim())
-                              .map((v) => parseFloat(v.price) || 0),
+                              .map((v) => {
+                                const p = parseDecimal(v.price)
+                                return Number.isFinite(p) ? p : 0
+                              }),
                           ),
-                        )
+                        ).replace(".", ",")
                       : form.price
                   }
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
                   className={cn(input, formHasVariants && "opacity-50")}
+                  placeholder="19,90"
                 />
               </div>
               <div>
@@ -400,9 +426,8 @@ export default function AdminProductsPage() {
                   İndirimsiz Fiyat (üstü çizili)
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   disabled={formHasVariants}
                   value={formHasVariants ? "" : form.compareAtPrice}
                   onChange={(e) => setForm({ ...form, compareAtPrice: e.target.value })}
@@ -542,9 +567,8 @@ export default function AdminProductsPage() {
                     <div key={key}>
                       <label className="mb-1.5 block text-xs font-semibold">{lbl}</label>
                       <input
-                        type="number"
-                        step="0.1"
-                        min="0"
+                        type="text"
+                        inputMode="decimal"
                         value={form[key]}
                         onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                         className={input}
@@ -586,9 +610,8 @@ export default function AdminProductsPage() {
                     Müşteriye Yansıyan Özel Kargo Ücreti (TL)
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={form.shippingFee}
                     onChange={(e) => setForm({ ...form, shippingFee: e.target.value })}
                     className={input}
@@ -667,18 +690,16 @@ export default function AdminProductsPage() {
                             className={input}
                           />
                           <input
-                            type="number"
-                            step="0.01"
-                            min="0"
+                            type="text"
+                            inputMode="decimal"
                             value={v.price}
                             onChange={(e) => setVariant({ price: e.target.value })}
-                            placeholder="Fiyat"
+                            placeholder="19,90"
                             className={input}
                           />
                           <input
-                            type="number"
-                            step="0.01"
-                            min="0"
+                            type="text"
+                            inputMode="decimal"
                             value={v.compareAtPrice}
                             onChange={(e) => setVariant({ compareAtPrice: e.target.value })}
                             placeholder="—"

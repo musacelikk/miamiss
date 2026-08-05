@@ -12,6 +12,8 @@ interface PuzzleData {
   hint?: string
   length?: number
   letters?: string[]
+  rewardPercent?: number
+  rewardValidityDays?: number
 }
 
 function sessionKey(): string {
@@ -82,14 +84,17 @@ export function WordPuzzle() {
             <Sparkles className="h-3.5 w-3.5" /> Kelime Oyunu
           </p>
           <h2 className="font-display text-[1.75rem] leading-tight sm:text-4xl lg:text-5xl">
-            Kelimeyi Bul, <span className="italic text-accent">%10 İndirim</span> Kazan
+            Kelimeyi Bul,{" "}
+            <span className="italic text-accent">%{puzzle.rewardPercent ?? 10} İndirim</span>{" "}
+            Kazan
           </h2>
 
           {won ? (
             <div className="mt-10 rounded-lg border border-accent/40 bg-primary-foreground/5 p-8 backdrop-blur">
               <Gift className="mx-auto mb-4 h-10 w-10 text-accent" />
               <p className="text-sm text-primary-foreground/80">
-                Tebrikler! %{won.value} indirim kodun hazır — 7 gün geçerli, sepette kullan:
+                Tebrikler! %{won.value} indirim kodun hazır —{" "}
+                {puzzle.rewardValidityDays ?? 7} gün geçerli, sepette kullan:
               </p>
               <button
                 onClick={copy}

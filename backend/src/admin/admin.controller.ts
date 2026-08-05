@@ -1,8 +1,10 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, MoreThan, Repository } from 'typeorm';
+import { Between, In, LessThanOrEqual, MoreThan, Repository, type FindOptionsWhere } from 'typeorm';
 import {
   ContactMessage,
+  Coupon,
+  Favorite,
   Order,
   OrderStatus,
   PaymentStatus,
@@ -23,7 +25,30 @@ export class AdminController {
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Review) private readonly reviews: Repository<Review>,
     @InjectRepository(ContactMessage) private readonly messages: Repository<ContactMessage>,
+    @InjectRepository(Favorite) private readonly favorites: Repository<Favorite>,
+    @InjectRepository(Coupon) private readonly coupons: Repository<Coupon>,
   ) {}
+
+  /** En cok favorilenen urunler: sayim + urun detayi (gorselli) */
+  private async topFavorited(limit: number) {
+    const rows: { productId: string; count: string }[] = await this.favorites
+      .createQueryBuilder('f')
+      .select('f.productId', 'productId')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('f.productId')
+      .orderBy('count', 'DESC')
+      .limit(limit)
+      .getRawMany();
+    if (!rows.length) return [];
+    const products = await this.products.find({
+      where: { id: In(rows.map((r) => r.productId)) },
+      relations: { images: true },
+    });
+    return rows.flatMap((r) => {
+      const product = products.find((p) => p.id === r.productId);
+      return product ? [{ product, count: parseInt(r.count, 10) }] : [];
+    });
+  }
 
   @Get('stats')
   async stats() {
@@ -106,6 +131,9 @@ export class AdminController {
       relations: { images: true },
     });
 
+    // En cok favorilenen urunler
+    const topFavorited = await this.topFavorited(8);
+
     return {
       totalOrders,
       pendingOrders,
@@ -120,6 +148,7 @@ export class AdminController {
       recentOrders,
       dailySeries,
       topViewed,
+      topFavorited,
     };
   }
 
@@ -240,8 +269,18 @@ export class AdminController {
         : 0,
     }));
 
+    // En cok favorilenen urunler (rapor tablosu icin)
+    const topFavorited = (await this.topFavorited(15)).map((r) => ({
+      name: r.product.name,
+      slug: r.product.slug,
+      count: r.count,
+      stock: r.product.stock,
+      price: r.product.price,
+    }));
+
     return {
       monthly,
+      topFavorited,
       topProducts: topProducts.map((r) => ({
         name: r.name,
         quantity: parseInt(r.quantity, 10),
@@ -264,5 +303,208 @@ export class AdminController {
       })),
       newCustomers,
     };
+  }
+
+  /**
+   * PDF/Excel disa aktarma icin ham veri: tarih araligina gore filtrelenmis
+   * duz satirlar doner; kolon secimi ve dosya uretimi frontend'de yapilir.
+   */
+  @Get('export/:type')
+  async export(
+    @Param('type') type: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const CAP = 5000;
+    const fromDate = from ? new Date(`${from}T00:00:00`) : null;
+    const toDate = to ? new Date(`${to}T23:59:59.999`) : null;
+    const dateWhere = <T extends { createdAt?: unknown }>():
+      | FindOptionsWhere<T>
+      | Record<string, never> => {
+      if (fromDate && toDate) return { createdAt: Between(fromDate, toDate) } as FindOptionsWhere<T>;
+      if (fromDate) return { createdAt: MoreThan(fromDate) } as FindOptionsWhere<T>;
+      if (toDate) return { createdAt: LessThanOrEqual(toDate) } as FindOptionsWhere<T>;
+      return {};
+    };
+    const dt = (d: Date | string | null | undefined) =>
+      d
+        ? new Date(d).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
+        : '—';
+    const money = (v: number | null | undefined) =>
+      v == null ? '—' : `${Number(v).toLocaleString('tr-TR')} ₺`;
+
+    const STATUS_TR: Record<string, string> = {
+      PENDING: 'Onay Bekliyor',
+      CONFIRMED: 'Onaylandı',
+      PREPARING: 'Hazırlanıyor',
+      SHIPPED: 'Kargoda',
+      DELIVERED: 'Teslim Edildi',
+      CANCELLED: 'İptal',
+    };
+    const PAYMENT_TR: Record<string, string> = {
+      BANK_TRANSFER: 'Havale/EFT',
+      COD: 'Kapıda Ödeme',
+      CARD: 'Kart',
+      PAID: 'Ödendi',
+      PENDING: 'Bekliyor',
+      REFUNDED: 'İade Edildi',
+    };
+
+    switch (type) {
+      case 'orders': {
+        const orders = await this.orders.find({
+          where: dateWhere<Order>(),
+          order: { createdAt: 'DESC' },
+          take: CAP,
+        });
+        return {
+          rows: orders.map((o) => ({
+            orderNo: o.orderNo,
+            date: dt(o.createdAt),
+            customer: o.shippingName,
+            email: o.email,
+            city: o.shippingCity,
+            paymentMethod: PAYMENT_TR[o.paymentMethod] ?? o.paymentMethod,
+            paymentStatus: PAYMENT_TR[o.paymentStatus] ?? o.paymentStatus,
+            status: STATUS_TR[o.status] ?? o.status,
+            subtotal: money(o.subtotal),
+            discount: money(o.discountTotal),
+            shipping: money(o.shippingTotal),
+            grandTotal: money(o.grandTotal),
+            coupon: o.couponCode ?? '—',
+          })),
+        };
+      }
+      case 'users': {
+        const users = await this.users.find({
+          where: { role: Role.CUSTOMER, ...dateWhere<User>() },
+          order: { createdAt: 'DESC' },
+          take: CAP,
+        });
+        return {
+          rows: users.map((u) => ({
+            name: u.name,
+            email: u.email,
+            phone: u.phone ?? '—',
+            registeredAt: dt(u.createdAt),
+            acceptsMarketing: u.acceptsMarketing ? 'Evet' : 'Hayır',
+            via: u.googleId ? 'Google' : 'E-posta',
+          })),
+        };
+      }
+      case 'products': {
+        const products = await this.products.find({
+          relations: { category: true, variants: true },
+          order: { name: 'ASC' },
+          take: CAP,
+        });
+        return {
+          rows: products.map((p) => ({
+            name: p.name,
+            sku: p.sku ?? '—',
+            category: p.category?.name ?? '—',
+            price: money(p.price),
+            compareAtPrice: p.compareAtPrice != null ? money(p.compareAtPrice) : '—',
+            stock: p.stock,
+            variants: p.variants?.length
+              ? p.variants.map((v) => `${v.name} (${v.stock})`).join(', ')
+              : '—',
+            status: p.isActive ? 'Satışta' : 'Pasif',
+            viewCount: p.viewCount ?? 0,
+          })),
+        };
+      }
+      case 'stock': {
+        const products = await this.products.find({
+          relations: { category: true, variants: true },
+          order: { stock: 'ASC' },
+          take: CAP,
+        });
+        return {
+          rows: products.map((p) => ({
+            name: p.name,
+            sku: p.sku ?? '—',
+            category: p.category?.name ?? '—',
+            stock: p.stock,
+            variants: p.variants?.length
+              ? p.variants.map((v) => `${v.name}: ${v.stock}`).join(', ')
+              : '—',
+            status:
+              p.stock === 0 ? 'Tükendi' : p.stock <= 3 ? 'Kritik' : 'Yeterli',
+            isActive: p.isActive ? 'Satışta' : 'Pasif',
+          })),
+        };
+      }
+      case 'reviews': {
+        const reviews = await this.reviews.find({
+          where: dateWhere<Review>(),
+          relations: { user: true, product: true },
+          order: { createdAt: 'DESC' },
+          take: CAP,
+        });
+        return {
+          rows: reviews.map((r) => ({
+            product: r.product?.name ?? '—',
+            user: r.displayName ?? r.user?.name ?? '—',
+            rating: r.rating ?? '—',
+            comment: r.comment,
+            type: r.parentId ? 'Yanıt' : 'Yorum',
+            status: r.isApproved ? 'Yayında' : 'Kaldırıldı',
+            date: dt(r.createdAt),
+          })),
+        };
+      }
+      case 'coupons': {
+        const coupons = await this.coupons.find({
+          where: dateWhere<Coupon>(),
+          order: { createdAt: 'DESC' },
+          take: CAP,
+        });
+        return {
+          rows: coupons.map((c) => ({
+            code: c.code,
+            type: c.type === 'PERCENT' ? `%${c.value}` : money(c.value),
+            usedCount: c.usedCount,
+            maxUses: c.maxUses ?? 'Sınırsız',
+            minOrderTotal: c.minOrderTotal != null ? money(c.minOrderTotal) : '—',
+            expiresAt: c.expiresAt ? dt(c.expiresAt) : 'Süresiz',
+            source: c.source === 'PUZZLE' ? 'Bulmaca' : 'Manuel',
+            status: c.isActive ? 'Aktif' : 'Pasif',
+          })),
+        };
+      }
+      case 'favorites': {
+        const top = await this.topFavorited(CAP);
+        return {
+          rows: top.map((f, i) => ({
+            rank: i + 1,
+            name: f.product.name,
+            sku: f.product.sku ?? '—',
+            count: f.count,
+            price: money(f.product.price),
+            stock: f.product.stock,
+          })),
+        };
+      }
+      case 'messages': {
+        const messages = await this.messages.find({
+          where: dateWhere<ContactMessage>(),
+          order: { createdAt: 'DESC' },
+          take: CAP,
+        });
+        return {
+          rows: messages.map((m) => ({
+            name: m.name,
+            email: m.email,
+            subject: m.subject ?? '—',
+            message: m.message,
+            status: m.isRead ? 'Okundu' : 'Yeni',
+            date: dt(m.createdAt),
+          })),
+        };
+      }
+      default:
+        throw new BadRequestException('Bilinmeyen rapor türü.');
+    }
   }
 }

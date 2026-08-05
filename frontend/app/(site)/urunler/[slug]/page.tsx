@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { API_URL } from "@/lib/api"
 import { ProductDetailClient } from "./product-detail-client"
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.miamisuhome.com"
 
 interface ApiProduct {
   name: string
@@ -95,12 +95,35 @@ export default async function ProductPage({
       }
     : null
 
+  const breadcrumbLd = product
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Anasayfa", item: SITE_URL },
+          { "@type": "ListItem", position: 2, name: "Koleksiyon", item: `${SITE_URL}/urunler` },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: product.name,
+            item: `${SITE_URL}/urunler/${slug}`,
+          },
+        ],
+      }
+    : null
+
   return (
     <>
       {jsonLd && (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      {breadcrumbLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
         />
       )}
       <ProductDetailClient slug={slug} />

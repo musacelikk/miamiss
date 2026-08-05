@@ -13,6 +13,7 @@ import { Repository } from 'typeorm';
 import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 import { ContactMessage, Role } from '../entities';
 import { JwtAuthGuard, Roles, RolesGuard } from '../auth/guards';
+import { MailService } from '../mail/mail.service';
 
 class ContactDto {
   @IsString()
@@ -35,11 +36,18 @@ class ContactDto {
 export class ContactController {
   constructor(
     @InjectRepository(ContactMessage) private readonly messages: Repository<ContactMessage>,
+    private readonly mail: MailService,
   ) {}
 
   @Post('contact')
   async create(@Body() dto: ContactDto) {
     await this.messages.save(this.messages.create(dto));
+    this.mail.contactMessageAdmin({
+      name: dto.name,
+      email: dto.email,
+      subject: dto.subject ?? null,
+      message: dto.message,
+    });
     return { ok: true, message: 'Mesajınız alındı, en kısa sürede dönüş yapacağız.' };
   }
 

@@ -2,7 +2,9 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from './user.entity';
@@ -29,13 +31,26 @@ export class Review {
   @Column({ type: 'varchar', nullable: true })
   displayName: string | null;
 
-  @Column({ type: 'int' })
-  rating: number;
+  /** Yanit ise bagli oldugu ust yorum (tek seviye) */
+  @Column({ type: 'uuid', nullable: true })
+  parentId: string | null;
+
+  @ManyToOne(() => Review, (r) => r.replies, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'parentId' })
+  parent: Review | null;
+
+  @OneToMany(() => Review, (r) => r.parent)
+  replies: Review[];
+
+  /** Yanitlarda puan olmaz (null) */
+  @Column({ type: 'int', nullable: true })
+  rating: number | null;
 
   @Column({ type: 'text' })
   comment: string;
 
-  @Column({ default: false })
+  /** Yorumlar onay gerektirmeden yayinlanir; admin gerekirse kaldirir */
+  @Column({ default: true })
   isApproved: boolean;
 
   @CreateDateColumn()

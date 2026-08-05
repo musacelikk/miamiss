@@ -1,91 +1,96 @@
-"use client"
+import type { Metadata } from "next"
+import { API_URL } from "@/lib/api"
+import { BlogDetailClient } from "./blog-detail-client"
 
-import Link from "next/link"
-import { use, useEffect, useState } from "react"
-import { ArrowLeft, Loader2 } from "lucide-react"
-import { api, type BlogPost } from "@/lib/api"
-import { formatDate } from "@/lib/format"
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.miamisuhome.com"
 
-export default function BlogDetailPage({
+interface ApiPost {
+  title: string
+  slug: string
+  excerpt: string
+  content: string
+  coverImage: string | null
+  publishedAt: string | null
+  updatedAt?: string
+}
+
+async function fetchPost(slug: string): Promise<ApiPost | null> {
+  try {
+    const res = await fetch(`${API_URL}/blog/${slug}`, { next: { revalidate: 300 } })
+    if (!res.ok) return null
+    return (await res.json()) as ApiPost
+  } catch {
+    return null
+  }
+}
+
+const absoluteImage = (url?: string | null) =>
+  !url ? undefined : url.startsWith("http") ? url : `${SITE_URL}${url}`
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const post = await fetchPost(slug)
+  if (!post) return { title: "Yazı Bulunamadı" }
+
+  const description = (post.excerpt || post.content.replace(/<[^>]+>/g, "")).slice(0, 160)
+  const image = absoluteImage(post.coverImage)
+  return {
+    title: post.title,
+    description,
+    alternates: { canonical: `${SITE_URL}/blog/${slug}` },
+    openGraph: {
+      title: `${post.title} | Miamisu Home`,
+      description,
+      url: `${SITE_URL}/blog/${slug}`,
+      type: "article",
+      ...(post.publishedAt ? { publishedTime: post.publishedAt } : {}),
+      ...(image ? { images: [{ url: image }] } : {}),
+    },
+  }
+}
+
+export default async function BlogPostPage({
   params,
 }: {
   params: Promise<{ slug: string }>
 }) {
-  const { slug } = use(params)
-  const [post, setPost] = useState<BlogPost | null>(null)
-  const [notFound, setNotFound] = useState(false)
+  const { slug } = await params
+  const post = await fetchPost(slug)
 
-  useEffect(() => {
-    api<BlogPost>(`/blog/${slug}`, { auth: false })
-      .then(setPost)
-      .catch(() => setNotFound(true))
-  }, [slug])
-
-  if (notFound) {
-    return (
-      <div className="py-32 text-center">
-        <p className="font-display text-3xl">Yazı bulunamadı</p>
-        <Link href="/blog" className="mt-4 inline-block text-sm text-accent hover:underline">
-          Blog'a dön
-        </Link>
-      </div>
-    )
-  }
-
-  if (!post) {
-    return (
-      <div className="flex justify-center py-40">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
-    )
-  }
+  const jsonLd = post
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        headline: post.title,
+        description: post.excerpt || undefined,
+        image: absoluteImage(post.coverImage),
+        url: `${SITE_URL}/blog/${slug}`,
+        datePublished: post.publishedAt ?? undefined,
+        dateModified: post.updatedAt ?? post.publishedAt ?? undefined,
+        inLanguage: "tr-TR",
+        author: { "@type": "Organization", name: "Miamisu Home", url: SITE_URL },
+        publisher: {
+          "@type": "Organization",
+          name: "Miamisu Home",
+          logo: { "@type": "ImageObject", url: `${SITE_URL}/logo/logo.png` },
+        },
+        mainEntityOfPage: `${SITE_URL}/blog/${slug}`,
+      }
+    : null
 
   return (
-    <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:py-16">
-      <Link
-        href="/blog"
-        className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-accent"
-      >
-        <ArrowLeft className="h-4 w-4" /> Tüm yazılar
-      </Link>
-
-      {post.publishedAt && (
-        <p className="mt-8 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {formatDate(post.publishedAt)}
-        </p>
-      )}
-      <h1 className="mt-3 font-display text-4xl leading-tight sm:text-5xl">{post.title}</h1>
-      {post.excerpt && (
-        <p className="mt-4 text-lg italic leading-relaxed text-muted-foreground">{post.excerpt}</p>
-      )}
-
-      {post.coverImage && (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={post.coverImage}
-          alt={post.title}
-          className="mt-8 aspect-[16/9] w-full rounded-md object-cover"
+    <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
-
-      <div className="mt-10 space-y-5 leading-relaxed text-foreground/85">
-        {post.content
-          .split(/\n\s*\n/)
-          .filter((p) => p.trim())
-          .map((paragraph, i) => (
-            <p key={i}>{paragraph.trim()}</p>
-          ))}
-      </div>
-
-      <div className="mt-14 rounded-md bg-secondary/60 p-8 text-center">
-        <p className="font-display text-2xl">Koleksiyonumuzu keşfettiniz mi?</p>
-        <Link
-          href="/urunler"
-          className="mt-4 inline-flex h-11 items-center rounded-md bg-primary px-8 text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent"
-        >
-          Ürünlere Göz At
-        </Link>
-      </div>
-    </article>
+      <BlogDetailClient slug={slug} />
+    </>
   )
 }

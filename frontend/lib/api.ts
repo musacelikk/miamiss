@@ -137,6 +137,12 @@ export function productDisplay(product: Product): {
 }
 
 export interface HomepageSettings {
+  /** Hero arkaplanı: kolaj (varsayılan), tam ekran video veya tam ekran görsel */
+  heroBackgroundType: "collage" | "video" | "image"
+  heroBackgroundVideo: string
+  heroBackgroundImage: string
+  /** Arkaplan üzerindeki karartma oranı (0-80) */
+  heroOverlayOpacity: number
   heroEyebrow: string
   heroTitle: string
   heroTitleAccent: string
@@ -164,6 +170,10 @@ export interface HomepageSettings {
 }
 
 export const DEFAULT_HOMEPAGE: HomepageSettings = {
+  heroBackgroundType: "collage",
+  heroBackgroundVideo: "/video/265188_medium.mp4",
+  heroBackgroundImage: "",
+  heroOverlayOpacity: 40,
   heroEyebrow: "Doğal Taş Ev Aksesuarları",
   heroTitle: "Taşın zamansız",
   heroTitleAccent: "zarafeti",
@@ -237,14 +247,21 @@ export interface Product {
   createdAt: string
 }
 
+export interface ReviewReply {
+  id: string
+  rating: number | null
+  comment: string
+  createdAt: string
+  userName: string
+  isAdmin?: boolean
+}
+
+export interface ProductReview extends ReviewReply {
+  replies?: ReviewReply[]
+}
+
 export interface ProductDetail extends Product {
-  reviews: {
-    id: string
-    rating: number
-    comment: string
-    createdAt: string
-    userName: string
-  }[]
+  reviews: ProductReview[]
   related: Product[]
 }
 
@@ -291,6 +308,7 @@ export interface BlogPost {
   slug: string
   excerpt: string
   content: string
+  format?: "TEXT" | "MARKDOWN" | "HTML"
   coverImage: string | null
   isPublished: boolean
   publishedAt: string | null

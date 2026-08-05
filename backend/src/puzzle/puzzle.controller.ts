@@ -16,6 +16,7 @@ import { MoreThan, Repository } from 'typeorm';
 import { IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
 import { PuzzleWin, PuzzleWord, Role } from '../entities';
 import { CouponsService } from '../coupons/coupons.service';
+import { SettingsService } from '../settings/settings.service';
 import { CurrentUser, JwtAuthGuard, OptionalJwtAuthGuard, Roles, RolesGuard, type AuthUser } from '../auth/guards';
 
 class ClaimDto {
@@ -62,6 +63,7 @@ export class PuzzleController {
     @InjectRepository(PuzzleWord) private readonly words: Repository<PuzzleWord>,
     @InjectRepository(PuzzleWin) private readonly wins: Repository<PuzzleWin>,
     private readonly coupons: CouponsService,
+    private readonly settings: SettingsService,
   ) {}
 
   /** Anasayfa bulmacasi: rastgele aktif kelime, harfleri karistirilmis halde. */
@@ -71,12 +73,15 @@ export class PuzzleController {
     if (!actives.length) return { available: false };
     const word = actives[Math.floor(Math.random() * actives.length)];
     const normalized = normalize(word.word);
+    const reward = await this.settings.getPuzzle();
     return {
       available: true,
       wordId: word.id,
       hint: word.hint,
       length: normalized.replace(/ /g, '').length,
       letters: shuffle(normalized.replace(/ /g, '').split('')),
+      rewardPercent: reward.rewardPercent,
+      rewardValidityDays: reward.rewardValidityDays,
     };
   }
 
@@ -121,7 +126,8 @@ export class PuzzleController {
       code: coupon.code,
       value: coupon.value,
       expiresAt: coupon.expiresAt,
-      message: 'Tebrikler! %10 indirim kodunuz hazır.',
+      maxUses: coupon.maxUses,
+      message: `Tebrikler! %${coupon.value} indirim kodunuz hazır.`,
     };
   }
 

@@ -323,7 +323,48 @@ export class OrdersService {
           : null,
     });
 
+    // Adminlere yeni siparis bildirimi (ayarlardan acilip kapatilabilir)
+    this.mail.orderCreatedAdmin({
+      orderNo: order.orderNo,
+      email: order.email,
+      shippingName: order.shippingName,
+      grandTotal: order.grandTotal,
+      paymentMethod: order.paymentMethod,
+      items: orderItems.map((i) => ({
+        name: i.name + (i.variantName ? ` — ${i.variantName}` : ''),
+        quantity: i.quantity,
+      })),
+    });
+
+    // Bu siparisle stogu tukenen urunleri adminlere bildir
+    void this.notifyDepletedStock(
+      orderItems
+        .filter((i) => i.itemType === OrderItemType.PRODUCT && i.productId)
+        .map((i) => i.productId as string),
+    );
+
     return order;
+  }
+
+  /** Siparis sonrasi stogu sifirlanan urunleri bulup admin bildirimi tetikler. */
+  private async notifyDepletedStock(productIds: string[]) {
+    if (!productIds.length) return;
+    try {
+      const products = await this.dataSource.getRepository(Product).find({
+        where: { id: In([...new Set(productIds)]) },
+        relations: { variants: true },
+      });
+      const depleted = products.filter((p) =>
+        p.variants?.length
+          ? p.variants.every((v) => v.stock <= 0)
+          : p.stock <= 0,
+      );
+      if (depleted.length) {
+        this.mail.stockDepletedAdmin(depleted.map((p) => ({ name: p.name, sku: p.sku })));
+      }
+    } catch {
+      /* bildirim hatasi siparisi etkilemez */
+    }
   }
 
   async track(orderNo: string, email: string): Promise<Order> {

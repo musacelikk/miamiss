@@ -20,9 +20,13 @@ export class BlogPost {
   @Column({ type: 'text', default: '' })
   excerpt: string;
 
-  /** Bos satirla ayrilan paragraflar halinde duz metin */
+  /** Icerik: format alanina gore duz metin, markdown veya HTML */
   @Column({ type: 'text', default: '' })
   content: string;
+
+  /** Icerik formati: TEXT (bos satirla paragraf), MARKDOWN veya HTML */
+  @Column({ type: 'varchar', default: 'TEXT' })
+  format: 'TEXT' | 'MARKDOWN' | 'HTML';
 
   @Column({ type: 'varchar', nullable: true })
   coverImage: string | null;

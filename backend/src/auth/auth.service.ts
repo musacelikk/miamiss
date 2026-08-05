@@ -61,6 +61,7 @@ export class AuthService {
     });
     await this.users.save(user);
     this.logAuth(user, 'auth.register', 'Yeni üyelik oluşturuldu');
+    this.mail.newUserAdmin({ name: user.name, email: user.email });
     return { token: this.sign(user), user: this.publicUser(user) };
   }
 
@@ -97,6 +98,7 @@ export class AuthService {
           googleId: profile.googleId,
           passwordHash: null,
         });
+        this.mail.newUserAdmin({ name: profile.name, email: profile.email, via: 'Google' });
       }
       await this.users.save(user);
     }
