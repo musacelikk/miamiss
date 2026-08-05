@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { ArrowRight, Gem, HandHeart, Package, Truck } from "lucide-react"
+import { ArrowRight, ChevronDown, Gem, HandHeart, Package, Truck } from "lucide-react"
 import {
   DEFAULT_HOMEPAGE,
   imageUrl,
@@ -68,7 +68,8 @@ export function HomeClient({
       <>
         {mediaOrigin && <link rel="preconnect" href={mediaOrigin} crossOrigin="anonymous" />}
         {/* ===== Hero: tam ekran video/görsel arkaplan ===== */}
-        <section className="relative flex min-h-[72vh] items-center justify-center overflow-hidden bg-primary lg:min-h-[86vh]">
+        {/* svh: mobil tarayıcı çubukları dahil tam ekran — altındaki bölüm görünmez */}
+        <section className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-primary">
           {/* Kapak görseli: ilk boyamada anında görünür, video hazır olunca altta kalır */}
           {poster && (
             /* eslint-disable-next-line @next/next/no-img-element */
@@ -111,7 +112,7 @@ export function HomeClient({
             aria-hidden
           />
           {/* pt-*: saydam header'ın altında kalmaması için üstten pay */}
-          <div className="relative z-10 mx-auto max-w-3xl px-4 pb-20 pt-32 text-center text-white sm:px-6 sm:pt-36">
+          <div className="relative z-10 mx-auto max-w-3xl px-4 pb-24 pt-28 text-center text-white sm:px-6 sm:pb-28 sm:pt-32">
             <p className="eyebrow mb-4 text-white/80">{hp.heroEyebrow}</p>
             <h1 className="font-display text-[2.65rem] leading-[1.06] sm:text-6xl lg:text-7xl">
               {hp.heroTitle}{" "}
@@ -142,6 +143,14 @@ export function HomeClient({
               <p className="eyebrow mt-10 text-accent">{hp.heroBadge}</p>
             )}
           </div>
+
+          {/* Tam ekran hero'da aşağıda içerik olduğunu belli eden ipucu */}
+          <span
+            aria-hidden
+            className="absolute bottom-7 left-1/2 z-10 -translate-x-1/2 animate-bounce text-white/70"
+          >
+            <ChevronDown className="h-6 w-6" />
+          </span>
         </section>
         <HomeSections hp={hp} featured={featured} categories={categories} />
       </>
