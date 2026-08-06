@@ -149,8 +149,9 @@ export function SiteHeader({ heroOverlay = false }: { heroOverlay?: boolean }) {
             <Logo dark={transparent} className="h-11 sm:h-14" />
           </Link>
 
-          {/* Masaüstü nav */}
-          <nav className="hidden items-center gap-8 lg:flex">
+          {/* Masaüstü nav — logo ve ikon grubunun genişliğinden bağımsız olarak
+              sayfanın tam ortasında dursun diye akıştan çıkarılıp konumlandırıldı */}
+          <nav className="hidden items-center gap-8 lg:absolute lg:inset-y-0 lg:left-1/2 lg:flex lg:-translate-x-1/2">
             {NAV.map((item) => (
               <Link
                 key={item.href}
