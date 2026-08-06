@@ -25,3 +25,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# ornek env dosyasi surum kontrolunde kalsin
+!.env.example

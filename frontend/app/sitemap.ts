@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next"
 import { API_URL } from "@/lib/api"
+import { getAllBlogSlugs } from "@/lib/blog"
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.miamisuhome.com"
 
@@ -58,13 +59,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (page >= (data.pageCount ?? 1)) break
   }
 
-  // Blog yazıları
-  const posts = await fetchJson<{ slug: string; publishedAt: string | null }[]>(
-    `${API_URL}/blog`,
-  )
-  const blogUrls: MetadataRoute.Sitemap = (posts ?? []).map((b) => ({
+  // Blog yazıları — BlogProduce + yerel backend, slug'a göre tekilleştirilmiş.
+  // Yeni yazı yayınlandığında revalidate süresi dolar dolmaz sitemap'e düşer.
+  const posts = await getAllBlogSlugs()
+  const blogUrls: MetadataRoute.Sitemap = posts.map((b) => ({
     url: `${SITE_URL}/blog/${b.slug}`,
-    lastModified: b.publishedAt ? new Date(b.publishedAt) : undefined,
+    lastModified: b.lastModified,
     changeFrequency: "monthly",
     priority: 0.6,
   }))
