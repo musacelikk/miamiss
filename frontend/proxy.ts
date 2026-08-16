@@ -26,10 +26,12 @@ export function proxy(request: NextRequest) {
       const clean = pathname.replace(/^\/admin/, "") || "/"
       return NextResponse.redirect(`https://${ADMIN_DOMAIN}${clean}${request.nextUrl.search}`, 308)
     }
-    const url = request.nextUrl.clone()
-    url.protocol = "https:"
-    url.host = "www.miamisuhome.com"
-    return NextResponse.redirect(url, 308)
+    // Dikkat: nextUrl.clone() uzerinde url.host atamasi mevcut portu (Railway'de 8080)
+    // temizlemez; bu yuzden hedef URL'i acikca string olarak kuruyoruz.
+    return NextResponse.redirect(
+      `https://www.miamisuhome.com${pathname}${request.nextUrl.search}`,
+      308,
+    )
   }
 
   if (isAdminHost) {

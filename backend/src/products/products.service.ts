@@ -26,13 +26,13 @@ export class ProductsService {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(50, Math.max(1, query.limit ?? 24));
 
+    // Sayfalama, cogul iliskiler (images/variants) JOIN'lenmeden yapilir.
+    // Aksi halde LIMIT urunlere degil join'lenmis satirlara uygulanir ve
+    // ornegin limit=12 istegi 12 satir = ~3 urun dondurur.
     const qb = this.products
       .createQueryBuilder('p')
-      .leftJoinAndSelect('p.images', 'img')
-      .leftJoinAndSelect('p.variants', 'variant')
-      .leftJoinAndSelect('p.category', 'cat')
-      .orderBy('p.createdAt', 'DESC')
-      .addOrderBy('img.sortOrder', 'ASC');
+      .leftJoin('p.category', 'cat')
+      .orderBy('p.createdAt', 'DESC');
 
     if (!query.includeInactive) qb.andWhere('p.isActive = true');
     if (query.category) qb.andWhere('cat.slug = :category', { category: query.category });
@@ -44,13 +44,30 @@ export class ProductsService {
     else if (query.sort === 'price-desc') qb.orderBy('p.price', 'DESC');
     else if (query.sort === 'name') qb.orderBy('p.name', 'ASC');
 
-    const [items, total] = await qb
+    const [pageRows, total] = await qb
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
 
+    const items = await this.hydrate(pageRows.map((p) => p.id));
     const withRatings = await this.attachRatings(items);
     return { items: withRatings, total, page, pageCount: Math.ceil(total / limit) };
+  }
+
+  /** Sayfadaki urunlerin iliskilerini ayri sorguda yukler; sirayi id listesine gore korur. */
+  private async hydrate(ids: string[]) {
+    if (!ids.length) return [] as Product[];
+    const full = await this.products
+      .createQueryBuilder('p')
+      .leftJoinAndSelect('p.images', 'img')
+      .leftJoinAndSelect('p.variants', 'variant')
+      .leftJoinAndSelect('p.category', 'cat')
+      .where('p.id IN (:...ids)', { ids })
+      .orderBy('img.sortOrder', 'ASC')
+      .addOrderBy('variant.sortOrder', 'ASC')
+      .getMany();
+    const byId = new Map(full.map((p) => [p.id, p]));
+    return ids.map((id) => byId.get(id)).filter((p): p is Product => p != null);
   }
 
   private async attachRatings(items: Product[]) {
