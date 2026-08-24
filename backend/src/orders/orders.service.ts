@@ -25,6 +25,7 @@ import { CouponsService } from '../coupons/coupons.service';
 import { GiftCardsService } from '../gift-cards/gift-cards.service';
 import { SettingsService } from '../settings/settings.service';
 import { MailService } from '../mail/mail.service';
+import { ShippingService } from '../shipping/shipping.service';
 
 export interface CreateOrderInput {
   userId?: string | null;
@@ -70,6 +71,7 @@ export class OrdersService {
     private readonly settings: SettingsService,
     private readonly mail: MailService,
     private readonly configService: ConfigService,
+    private readonly shipping: ShippingService,
   ) {}
 
   /** Durumu degistirir ve gecmise damgali kayit ekler. */
@@ -82,6 +84,11 @@ export class OrdersService {
       { status, at: new Date().toISOString() },
     ];
     await this.orders.save(order);
+
+    // Kapida odemede gonderi, siparis onaylandiginda olusturulur
+    if (status === OrderStatus.CONFIRMED && order.paymentMethod === PaymentMethod.COD) {
+      void this.shipping.autoCreateForOrder(order.id);
+    }
   }
 
   private generateOrderNo(): string {
@@ -403,6 +410,11 @@ export class OrdersService {
       ];
     }
     await this.orders.save(order);
+
+    // Odeme onaylaninca kargo gonderisini otomatik olustur (hata siparisi etkilemez)
+    if (status === PaymentStatus.PAID) {
+      void this.shipping.autoCreateForOrder(order.id);
+    }
 
     // Odeme onaylaninca satin alinan hediye kartlarini aktive et + kodlari mail at
     if (status === PaymentStatus.PAID) {

@@ -4,6 +4,7 @@ import { Coupon, GiftCard, Order, OrderItem, Product, ProductVariant } from '../
 import { CouponsModule } from '../coupons/coupons.module';
 import { GiftCardsModule } from '../gift-cards/gift-cards.module';
 import { SettingsModule } from '../settings/settings.module';
+import { ShippingModule } from '../shipping/shipping.module';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
 import { AdminOrdersController } from './admin-orders.controller';
@@ -14,6 +15,7 @@ import { AdminOrdersController } from './admin-orders.controller';
     CouponsModule,
     GiftCardsModule,
     SettingsModule,
+    ShippingModule,
   ],
   providers: [OrdersService],
   controllers: [OrdersController, AdminOrdersController],
