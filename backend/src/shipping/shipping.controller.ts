@@ -3,13 +3,14 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   Post,
-  Query,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { timingSafeEqual } from 'crypto';
 import { IsOptional, IsString } from 'class-validator';
 import { Role } from '../entities';
 import { JwtAuthGuard, Roles, RolesGuard } from '../auth/guards';
@@ -62,11 +63,21 @@ export class ShippingWebhookController {
     private readonly config: ConfigService,
   ) {}
 
-  /** Geliver panelinde webhook adresi ?token=GELIVER_WEBHOOK_SECRET ile tanimlanir. */
+  /**
+   * Geliver panelinde webhook olusturulurken ozel header tanimlanir:
+   * headerName = "x-geliver-token", headerValue = GELIVER_WEBHOOK_SECRET.
+   * Token URL'de tasinmaz (loglara sizmasin), karsilastirma sabit zamanlidir.
+   */
   @Post('geliver/webhook')
-  async webhook(@Query('token') token: string, @Body() payload: Record<string, unknown>) {
+  async webhook(
+    @Headers('x-geliver-token') token: string | undefined,
+    @Body() payload: Record<string, unknown>,
+  ) {
     const secret = this.config.get<string>('GELIVER_WEBHOOK_SECRET');
-    if (!secret || token !== secret) throw new UnauthorizedException();
+    if (!secret) throw new UnauthorizedException();
+    const a = Buffer.from(secret);
+    const b = Buffer.from(token ?? '');
+    if (a.length !== b.length || !timingSafeEqual(a, b)) throw new UnauthorizedException();
     await this.shipping.handleWebhook(payload);
     return { ok: true };
   }

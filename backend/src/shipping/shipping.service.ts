@@ -156,16 +156,24 @@ export class ShippingService {
     const trackingNo = payload.data?.trackingNumber;
     if (trackingNo && !order.trackingNo) order.trackingNo = trackingNo;
 
+    // Durum yalnizca ileri gidebilir: gec gelen TRANSIT bildirimi
+    // DELIVERED siparisi geri dusuremez, iptal edilmis siparis degismez.
+    const rank: Partial<Record<OrderStatus, number>> = {
+      [OrderStatus.PENDING]: 0,
+      [OrderStatus.CONFIRMED]: 1,
+      [OrderStatus.PREPARING]: 2,
+      [OrderStatus.SHIPPED]: 3,
+      [OrderStatus.DELIVERED]: 4,
+    };
     const next = statusCode ? this.geliver.mapTrackingStatus(statusCode) : null;
-    if (next && next !== order.status && order.status !== OrderStatus.CANCELLED) {
-      const wasShipped =
-        order.status === OrderStatus.SHIPPED || order.status === OrderStatus.DELIVERED;
+    const currentRank = rank[order.status];
+    if (next && currentRank !== undefined && (rank[next] ?? -1) > currentRank) {
       order.status = next;
       order.statusHistory = [
         ...(order.statusHistory ?? []),
         { status: next, at: new Date().toISOString() },
       ];
-      if (next === OrderStatus.SHIPPED && !wasShipped) {
+      if (next === OrderStatus.SHIPPED) {
         this.mail.orderShipped(order.email, order.orderNo, order.cargoCompany, order.trackingNo);
       }
     }

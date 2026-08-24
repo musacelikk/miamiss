@@ -149,6 +149,31 @@ describe('ShippingService', () => {
     expect(mail.orderShipped).toHaveBeenCalledWith('a@b.com', 'MIA-1', 'YURTICI', 'TRK1');
   });
 
+  it('webhook gec gelen TRANSIT bildirimi DELIVERED siparisi geri dusuremez', async () => {
+    const { svc, orders, mail } = makeService({
+      order: { geliverShipmentId: 'shp1', status: OrderStatus.DELIVERED },
+    });
+    await svc.handleWebhook({
+      event: 'TRACK_UPDATED',
+      data: { id: 'shp1', trackingStatus: { trackingStatusCode: 'TRANSIT' } },
+    });
+    const saved = orders.save.mock.calls[0][0];
+    expect(saved.status).toBe(OrderStatus.DELIVERED);
+    expect(mail.orderShipped).not.toHaveBeenCalled();
+  });
+
+  it('webhook iptal edilmis siparisin durumunu degistirmez', async () => {
+    const { svc, orders } = makeService({
+      order: { geliverShipmentId: 'shp1', status: OrderStatus.CANCELLED },
+    });
+    await svc.handleWebhook({
+      event: 'TRACK_UPDATED',
+      data: { id: 'shp1', trackingStatus: { trackingStatusCode: 'DELIVERED' } },
+    });
+    const saved = orders.save.mock.calls[0][0];
+    expect(saved.status).toBe(OrderStatus.CANCELLED);
+  });
+
   it('webhook bilinmeyen gonderiyi yok sayar', async () => {
     const { svc, orders } = makeService({ order: null });
     await expect(
