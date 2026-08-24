@@ -12,6 +12,7 @@ import {
   Share2,
 } from "lucide-react"
 import { toast } from "sonner"
+import { useCart } from "@/components/providers"
 import { formatPrice } from "@/lib/format"
 
 interface LastOrder {
@@ -51,6 +52,7 @@ function CopyButton({
 export default function OrderSuccessPage() {
   const [order, setOrder] = useState<LastOrder | null>(null)
   const [ibanCopied, setIbanCopied] = useState(false)
+  const { clear } = useCart()
 
   useEffect(() => {
     try {
@@ -59,6 +61,15 @@ export default function OrderSuccessPage() {
     } catch {
       /* yoksayilir */
     }
+    // Karttan (PayTR 3D) basarili donuste sepet burada temizlenir
+    if (
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("paytr") === "1"
+    ) {
+      clear()
+      window.history.replaceState(null, "", "/siparis-basarili")
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const trackUrl =

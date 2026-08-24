@@ -49,6 +49,8 @@ export default function CheckoutPage() {
     note: "",
   })
   const [payMethod, setPayMethod] = useState<PayMethod>("BANK_TRANSFER")
+  const [cardEnabled, setCardEnabled] = useState(false)
+  const [card, setCard] = useState({ holder: "", number: "", month: "", year: "", cvv: "" })
   const [invoice, setInvoice] = useState({
     type: "INDIVIDUAL" as "INDIVIDUAL" | "CORPORATE",
     tckn: "",
@@ -78,6 +80,20 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     api<StoreSettings>("/settings", { auth: false }).then(setSettings).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    api<{ cardEnabled: boolean }>("/payments/config", { auth: false })
+      .then((c) => setCardEnabled(c.cardEnabled))
+      .catch(() => {})
+    // 3D'den basarisiz donus: fail_url buraya ?payment=failed ile getirir
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get("payment") === "failed") {
+        toast.error("Kart ödemesi tamamlanamadı. Bilgilerinizi kontrol edip tekrar deneyin.")
+        window.history.replaceState(null, "", "/odeme")
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -165,6 +181,18 @@ export default function CheckoutPage() {
       toast.error("Devam etmek için sözleşmeleri okuyup onaylamanız gerekiyor.")
       return
     }
+    if (payMethod === "CARD") {
+      if (
+        card.number.length < 15 ||
+        !card.holder.trim() ||
+        card.month.length !== 2 ||
+        card.year.length !== 2 ||
+        card.cvv.length < 3
+      ) {
+        toast.error("Kart bilgilerini eksiksiz doldurun.")
+        return
+      }
+    }
     if (invoice.type === "INDIVIDUAL" && invoice.tckn && invoice.tckn.length !== 11) {
       toast.error("TC kimlik numarası 11 haneli olmalıdır.")
       return
@@ -182,6 +210,7 @@ export default function CheckoutPage() {
     setBusy(true)
     try {
       const res = await api<{
+        id: string
         orderNo: string
         grandTotal: number
         paymentMethod: PayMethod
@@ -225,6 +254,26 @@ export default function CheckoutPage() {
         "miamiss_last_order",
         JSON.stringify({ ...res, email: form.email }),
       )
+      if (payMethod === "CARD") {
+        // 3D HTML'i tam sayfa yazilir; banka dogrulamasi sonrasi PayTR
+        // ok_url/fail_url ile geri yonlendirir. Sepet basarida temizlenir.
+        const { html } = await api<{ html: string }>("/payments/paytr/start", {
+          method: "POST",
+          auth: false,
+          body: JSON.stringify({
+            orderId: res.id,
+            cardHolder: card.holder.trim(),
+            cardNumber: card.number,
+            expiryMonth: card.month.padStart(2, "0"),
+            expiryYear: card.year,
+            cvv: card.cvv,
+          }),
+        })
+        document.open()
+        document.write(html)
+        document.close()
+        return
+      }
       clear()
       router.push("/siparis-basarili")
     } catch (err) {
@@ -521,20 +570,129 @@ export default function CheckoutPage() {
                 </label>
               )}
 
-              <div className="flex items-start gap-4 rounded-md border border-dashed border-border p-4 opacity-60">
-                <CreditCard className="mt-0.5 h-5 w-5" />
-                <div>
-                  <p className="text-sm font-semibold">
-                    Kredi Kartı{" "}
-                    <span className="ml-1 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                      Çok Yakında
-                    </span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Güvenli kart ödemesi kısa süre içinde aktif olacak.
-                  </p>
+              {cardEnabled ? (
+                <label
+                  className={cn(
+                    "flex cursor-pointer items-start gap-4 rounded-md border p-4 transition-colors",
+                    payMethod === "CARD"
+                      ? "border-accent bg-secondary/50"
+                      : "border-border hover:border-accent/50",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="pay"
+                    checked={payMethod === "CARD"}
+                    onChange={() => setPayMethod("CARD")}
+                    className="mt-1 accent-[oklch(0.63_0.065_75)]"
+                  />
+                  <CreditCard className="mt-0.5 h-5 w-5 text-accent" />
+                  <div className="w-full">
+                    <p className="text-sm font-semibold">Kredi / Banka Kartı</p>
+                    <p className="text-xs text-muted-foreground">
+                      3D Secure ile güvenli ödeme. Kart bilgileriniz saklanmaz.
+                    </p>
+                    {payMethod === "CARD" && (
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="sm:col-span-2">
+                          <label className="mb-1.5 block text-xs font-semibold">
+                            Kart Üzerindeki İsim *
+                          </label>
+                          <input
+                            required
+                            value={card.holder}
+                            onChange={(e) =>
+                              setCard({ ...card, holder: sanitizeName(e.target.value) })
+                            }
+                            className={input}
+                            autoComplete="cc-name"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="mb-1.5 block text-xs font-semibold">
+                            Kart Numarası *
+                          </label>
+                          <input
+                            required
+                            inputMode="numeric"
+                            autoComplete="cc-number"
+                            maxLength={19}
+                            value={card.number.replace(/(\d{4})(?=\d)/g, "$1 ")}
+                            onChange={(e) =>
+                              setCard({
+                                ...card,
+                                number: e.target.value.replace(/\D/g, "").slice(0, 16),
+                              })
+                            }
+                            className={`${input} font-mono`}
+                            placeholder="0000 0000 0000 0000"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="mb-1.5 block text-xs font-semibold">Ay *</label>
+                            <input
+                              required
+                              inputMode="numeric"
+                              maxLength={2}
+                              value={card.month}
+                              onChange={(e) =>
+                                setCard({ ...card, month: e.target.value.replace(/\D/g, "") })
+                              }
+                              className={`${input} font-mono`}
+                              placeholder="AA"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1.5 block text-xs font-semibold">Yıl *</label>
+                            <input
+                              required
+                              inputMode="numeric"
+                              maxLength={2}
+                              value={card.year}
+                              onChange={(e) =>
+                                setCard({ ...card, year: e.target.value.replace(/\D/g, "") })
+                              }
+                              className={`${input} font-mono`}
+                              placeholder="YY"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold">CVV *</label>
+                          <input
+                            required
+                            inputMode="numeric"
+                            autoComplete="cc-csc"
+                            maxLength={4}
+                            value={card.cvv}
+                            onChange={(e) =>
+                              setCard({ ...card, cvv: e.target.value.replace(/\D/g, "") })
+                            }
+                            className={`${input} font-mono`}
+                            placeholder="123"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </label>
+              ) : (
+                <div className="flex items-start gap-4 rounded-md border border-dashed border-border p-4 opacity-60">
+                  <CreditCard className="mt-0.5 h-5 w-5" />
+                  <div>
+                    <p className="text-sm font-semibold">
+                      Kredi Kartı{" "}
+                      <span className="ml-1 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        Çok Yakında
+                      </span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Güvenli kart ödemesi kısa süre içinde aktif olacak.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </section>
         </div>
