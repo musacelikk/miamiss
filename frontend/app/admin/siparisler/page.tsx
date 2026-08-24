@@ -13,6 +13,7 @@ import {
   type Order,
 } from "@/lib/api"
 import { formatDateTime, formatPrice } from "@/lib/format"
+import { ShippingPanel } from "@/components/admin/shipping-panel"
 import { StatusBadge } from "@/components/admin/status-badge"
 import { cn } from "@/lib/utils"
 
@@ -241,6 +242,7 @@ function OrderRow({
                   "Ödendi" seçilince satın alınan hediye kartları aktifleşir.
                 </p>
               </div>
+              <ShippingPanel order={order} onChanged={onChanged} />
               <div>
                 <label className="mb-1.5 block text-xs font-semibold">Kargo Firması</label>
                 <input
