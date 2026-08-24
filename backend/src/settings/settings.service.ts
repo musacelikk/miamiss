@@ -17,6 +17,16 @@ export interface StoreSettings {
   address: string;
   announcement: string;
   announcementUrl: string;
+  /* Geliver gonderici (kargo cikis) bilgileri */
+  senderName: string;
+  senderPhone: string;
+  senderEmail: string;
+  senderCity: string;
+  senderDistrict: string;
+  senderAddress: string;
+  senderZip: string;
+  /** Otomatik gonderide kullanilacak varsayilan desi */
+  defaultDesi: number;
   /** Desi kademesine gore kargo tarifesi (admin panelde tahmini ucret icin) */
   desiPrices: { desi: number; price: number }[];
 }
@@ -35,6 +45,14 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   address: '',
   announcement: '1500 TL üzeri siparişlerde kargo ücretsiz',
   announcementUrl: '',
+  senderName: 'Miamisu Home',
+  senderPhone: '',
+  senderEmail: 'info@miamisuhome.com',
+  senderCity: '',
+  senderDistrict: '',
+  senderAddress: '',
+  senderZip: '',
+  defaultDesi: 2,
   desiPrices: [
     { desi: 1, price: 65 },
     { desi: 2, price: 75 },

@@ -114,6 +114,7 @@ export default function AdminSettingsPage() {
           shippingFee: parseDecimal(String(settings.shippingFee)) || 0,
           freeShippingThreshold: parseDecimal(String(settings.freeShippingThreshold)) || 0,
           codFee: parseDecimal(String(settings.codFee)) || 0,
+          defaultDesi: parseInt(String(settings.defaultDesi), 10) || 1,
         }),
       })
       setSettings(updated)
@@ -200,6 +201,60 @@ export default function AdminSettingsPage() {
                   onChange={set("iban")}
                   className={`${input} font-mono`}
                   placeholder="TR.."
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className={card}>
+            <h2 className={title}>Kargo Göndericisi (Geliver)</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Kargo gönderileri bu adresten çıkar. Geliver entegrasyonu için doldurun.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={label}>Gönderici Adı</label>
+                <input value={settings.senderName} onChange={set("senderName")} className={input} />
+              </div>
+              <div>
+                <label className={label}>Telefon</label>
+                <input value={settings.senderPhone} onChange={set("senderPhone")} className={input} />
+              </div>
+              <div>
+                <label className={label}>E-posta</label>
+                <input value={settings.senderEmail} onChange={set("senderEmail")} className={input} />
+              </div>
+              <div>
+                <label className={label}>İl</label>
+                <input value={settings.senderCity} onChange={set("senderCity")} className={input} />
+              </div>
+              <div>
+                <label className={label}>İlçe</label>
+                <input
+                  value={settings.senderDistrict}
+                  onChange={set("senderDistrict")}
+                  className={input}
+                />
+              </div>
+              <div>
+                <label className={label}>Posta Kodu</label>
+                <input value={settings.senderZip} onChange={set("senderZip")} className={input} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={label}>Açık Adres</label>
+                <input
+                  value={settings.senderAddress}
+                  onChange={set("senderAddress")}
+                  className={input}
+                />
+              </div>
+              <div>
+                <label className={label}>Varsayılan Desi</label>
+                <input
+                  inputMode="numeric"
+                  value={String(settings.defaultDesi)}
+                  onChange={set("defaultDesi")}
+                  className={input}
                 />
               </div>
             </div>
