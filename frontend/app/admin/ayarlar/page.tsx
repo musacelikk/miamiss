@@ -207,47 +207,12 @@ export default function AdminSettingsPage() {
           </section>
 
           <section className={card}>
-            <h2 className={title}>Kargo Göndericisi (Geliver)</h2>
+            <h2 className={title}>Geliver Kargo</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Kargo gönderileri bu adresten çıkar. Geliver entegrasyonu için doldurun.
+              Gönderici adresi Geliver panelinizdeki varsayılan adrestir. Buradaki desi,
+              otomatik oluşturulan gönderilerde paket ölçüsü olarak kullanılır.
             </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className={label}>Gönderici Adı</label>
-                <input value={settings.senderName} onChange={set("senderName")} className={input} />
-              </div>
-              <div>
-                <label className={label}>Telefon</label>
-                <input value={settings.senderPhone} onChange={set("senderPhone")} className={input} />
-              </div>
-              <div>
-                <label className={label}>E-posta</label>
-                <input value={settings.senderEmail} onChange={set("senderEmail")} className={input} />
-              </div>
-              <div>
-                <label className={label}>İl</label>
-                <input value={settings.senderCity} onChange={set("senderCity")} className={input} />
-              </div>
-              <div>
-                <label className={label}>İlçe</label>
-                <input
-                  value={settings.senderDistrict}
-                  onChange={set("senderDistrict")}
-                  className={input}
-                />
-              </div>
-              <div>
-                <label className={label}>Posta Kodu</label>
-                <input value={settings.senderZip} onChange={set("senderZip")} className={input} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className={label}>Açık Adres</label>
-                <input
-                  value={settings.senderAddress}
-                  onChange={set("senderAddress")}
-                  className={input}
-                />
-              </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <div>
                 <label className={label}>Varsayılan Desi</label>
                 <input

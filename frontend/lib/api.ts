@@ -299,13 +299,6 @@ export interface StoreSettings {
   address: string
   announcement: string
   announcementUrl: string
-  senderName: string
-  senderPhone: string
-  senderEmail: string
-  senderCity: string
-  senderDistrict: string
-  senderAddress: string
-  senderZip: string
   defaultDesi: number
   desiPrices: { desi: number; price: number }[]
 }
