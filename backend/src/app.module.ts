@@ -21,6 +21,7 @@ import { BlogModule } from './blog/blog.module';
 import { SupportModule } from './support/support.module';
 import { MarketingModule } from './marketing/marketing.module';
 import { ReturnsModule } from './returns/returns.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { ReturnsModule } from './returns/returns.module';
     SupportModule,
     MarketingModule,
     ReturnsModule,
+    PaymentsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

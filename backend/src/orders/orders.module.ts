@@ -17,5 +17,6 @@ import { AdminOrdersController } from './admin-orders.controller';
   ],
   providers: [OrdersService],
   controllers: [OrdersController, AdminOrdersController],
+  exports: [OrdersService],
 })
 export class OrdersModule {}
