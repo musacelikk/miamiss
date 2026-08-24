@@ -19,6 +19,8 @@ import {
   Product,
   ProductVariant,
 } from '../entities';
+import { ConfigService } from '@nestjs/config';
+import { paytrConfigured } from '../payments/paytr.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { GiftCardsService } from '../gift-cards/gift-cards.service';
 import { SettingsService } from '../settings/settings.service';
@@ -67,6 +69,7 @@ export class OrdersService {
     private readonly giftCards: GiftCardsService,
     private readonly settings: SettingsService,
     private readonly mail: MailService,
+    private readonly configService: ConfigService,
   ) {}
 
   /** Durumu degistirir ve gecmise damgali kayit ekler. */
@@ -91,8 +94,8 @@ export class OrdersService {
     if (!hasProducts && !hasGiftCards) {
       throw new BadRequestException('Sepetiniz boş.');
     }
-    if (input.paymentMethod === PaymentMethod.CARD) {
-      throw new BadRequestException('Kredi kartı ile ödeme çok yakında aktif olacak.');
+    if (input.paymentMethod === PaymentMethod.CARD && !paytrConfigured(this.configService)) {
+      throw new BadRequestException('Kredi kartı ile ödeme şu anda kullanılamıyor.');
     }
     for (const gc of input.giftCardItems ?? []) {
       if (gc.amount < 100 || gc.amount > 10000) {
@@ -268,6 +271,7 @@ export class OrdersService {
       return manager.save(
         manager.create(Order, {
           orderNo: this.generateOrderNo(),
+          paytrMerchantOid: 'MIA' + randomBytes(6).toString('hex').toUpperCase(),
           userId: input.userId ?? null,
           email: input.email.trim().toLowerCase(),
           status: OrderStatus.PENDING,

@@ -120,6 +120,18 @@ export class Order {
   @Column({ type: 'varchar', nullable: true })
   cargoCompany: string | null;
 
+  /** PayTR merchant_oid (alfanumerik zorunlu; orderNo'daki tire kullanilamaz) */
+  @Column({ type: 'varchar', nullable: true, unique: true })
+  paytrMerchantOid: string | null;
+
+  /** Geliver gonderi kimligi */
+  @Column({ type: 'varchar', nullable: true })
+  geliverShipmentId: string | null;
+
+  /** Kargo etiketi (PDF/barkod) adresi */
+  @Column({ type: 'varchar', nullable: true })
+  labelUrl: string | null;
+
   @OneToMany(() => OrderItem, (i) => i.order, { cascade: true })
   items: OrderItem[];
 

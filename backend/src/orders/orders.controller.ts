@@ -171,6 +171,7 @@ export class OrdersController {
     });
     const store = await this.settings.get();
     return {
+      id: order.id,
       orderNo: order.orderNo,
       grandTotal: order.grandTotal,
       paymentMethod: order.paymentMethod,
