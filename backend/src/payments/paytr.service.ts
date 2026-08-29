@@ -75,6 +75,18 @@ export class PaytrService {
     return this.maxInstallment === '0' ? '1' : '0';
   }
 
+  /**
+   * TL tutarini PayTR'in bekledigi kurus tamsayisina cevirir (34.56 -> "3456").
+   * Kayan nokta hatasi olmasin diye yuvarlanir (1250.55 * 100 = 125054.999...).
+   */
+  static toKurus(amount: number): string {
+    return String(Math.round(amount * 100));
+  }
+
+  /**
+   * PayTR token'i POST'lanan degerlerin aynisiyla hesaplanmalidir; bu yuzden
+   * `amount` alani forma yazilan kurus dizesiyle bire bir ayni olmali.
+   */
   buildToken(p: { merchantOid: string; userIp: string; email: string; amount: string }): string {
     const raw =
       this.merchantId + p.userIp + p.merchantOid + p.email + p.amount +
@@ -98,7 +110,9 @@ export class PaytrService {
     if (!this.enabled) {
       throw new BadRequestException('Kredi kartı ile ödeme şu anda kullanılamıyor.');
     }
-    const amount = p.amount.toFixed(2);
+    // spp dogrulayicisi tutari kurus tamsayisi olarak istiyor
+    // ("payment_amount degeri integer olmalidir").
+    const amount = PaytrService.toKurus(p.amount);
     const form = new URLSearchParams({
       merchant_id: this.merchantId,
       user_ip: p.userIp,

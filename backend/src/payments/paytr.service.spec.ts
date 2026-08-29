@@ -52,13 +52,21 @@ describe('PaytrService', () => {
       merchantOid: 'MIAABC123',
       userIp: '1.2.3.4',
       email: 'a@b.com',
-      amount: '1250.50',
+      amount: '125050',
     });
     const raw =
-      '123456' + '1.2.3.4' + 'MIAABC123' + 'a@b.com' + '1250.50' +
+      '123456' + '1.2.3.4' + 'MIAABC123' + 'a@b.com' + '125050' +
       'card' + '0' + 'TL' + '1' + '0' + 'testsalt';
     const expected = createHmac('sha256', 'testkey').update(raw).digest('base64');
     expect(token).toBe(expected);
+  });
+
+  it('toKurus tutari kurus tamsayisina cevirir ve kayan nokta hatasi yapmaz', () => {
+    expect(PaytrService.toKurus(1250.5)).toBe('125050');
+    expect(PaytrService.toKurus(1250.55)).toBe('125055');
+    expect(PaytrService.toKurus(34.56)).toBe('3456');
+    expect(PaytrService.toKurus(150)).toBe('15000');
+    expect(PaytrService.toKurus(0.1 + 0.2)).toBe('30');
   });
 
   it('gecerli callback hash dogrulanir, bozuk hash reddedilir', () => {
@@ -100,6 +108,28 @@ describe('PaytrService', () => {
     expect(bodySent).toContain('max_installment=0');
     expect(bodySent).toContain('lang=tr');
     expect(bodySent).toContain('timeout_limit=30');
+  });
+
+  it('payment_amount kurus tamsayisi gider ve token ayni degerle hesaplanir', async () => {
+    const svc = new PaytrService(makeConfig(ENV));
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('<html>3d</html>'),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await svc.startPayment(ornekStart());
+
+    const sent = new URLSearchParams(String(fetchMock.mock.calls[0][1].body));
+    expect(sent.get('payment_amount')).toBe('125050');
+    // Imzanin bozulmamasi icin token, POST'lanan tutarin aynisiyla uretilmeli
+    expect(sent.get('paytr_token')).toBe(
+      svc.buildToken({
+        merchantOid: 'MIAABC123',
+        userIp: '1.2.3.4',
+        email: 'a@b.com',
+        amount: '125050',
+      }),
+    );
   });
 
   it('PAYTR_MAX_INSTALLMENT verilirse taksit acilir', async () => {
