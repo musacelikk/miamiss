@@ -386,6 +386,8 @@ export interface Order {
   cargoCompany: string | null
   geliverShipmentId?: string | null
   labelUrl?: string | null
+  shippingDesi?: number | null
+  shippingError?: string | null
   statusHistory?: { status: string; at: string }[]
   items: OrderItem[]
   createdAt: string

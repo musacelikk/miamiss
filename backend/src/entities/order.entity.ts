@@ -132,6 +132,17 @@ export class Order {
   @Column({ type: 'varchar', nullable: true })
   labelUrl: string | null;
 
+  /** Bu siparise ozel desi (bos ise magaza varsayilani kullanilir) */
+  @Column({ type: 'numeric', precision: 8, scale: 2, nullable: true, transformer: numericTransformer })
+  shippingDesi: number | null;
+
+  /**
+   * Otomatik gonderi olusturma basarisiz olduysa sebebi. Admin panelde
+   * gosterilir; gonderi olusunca temizlenir.
+   */
+  @Column({ type: 'text', nullable: true })
+  shippingError: string | null;
+
   @OneToMany(() => OrderItem, (i) => i.order, { cascade: true })
   items: OrderItem[];
 

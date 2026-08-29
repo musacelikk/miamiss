@@ -17,6 +17,8 @@ const ORDER = {
   labelUrl: null as string | null,
   trackingNo: null as string | null,
   cargoCompany: null as string | null,
+  shippingDesi: null as number | null,
+  shippingError: null as string | null,
   statusHistory: [] as { status: string; at: string }[],
 };
 
@@ -27,6 +29,7 @@ function makeService(
   const orders = {
     findOne: jest.fn().mockResolvedValue(order),
     save: jest.fn().mockImplementation((o) => Promise.resolve(o)),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
   const geliver = {
     enabled: overrides.geliverEnabled ?? true,
@@ -89,10 +92,52 @@ describe('ShippingService', () => {
     expect(geliver.acceptOffer).not.toHaveBeenCalled();
   });
 
-  it('geliver hatasi autoCreate disina sizmasin', async () => {
-    const { svc, geliver } = makeService();
+  it('geliver hatasi autoCreate disina sizmasin ve sebep siparise yazilsin', async () => {
+    const { svc, geliver, orders } = makeService();
     geliver.createDraftWithOffers.mockRejectedValue(new Error('patladi'));
     await expect(svc.autoCreateForOrder('o1')).resolves.toBeUndefined();
+    expect(orders.update).toHaveBeenCalledWith({ id: 'o1' }, { shippingError: 'patladi' });
+  });
+
+  it('taninmayan il autoCreate icin Geliver istegi yapmadan sebebi yazar', async () => {
+    const { svc, geliver, orders } = makeService({ order: { shippingCity: 'Bilinmeyen' } });
+    await svc.autoCreateForOrder('o1');
+    expect(geliver.createDraftWithOffers).not.toHaveBeenCalled();
+    expect(orders.update.mock.calls[0][1].shippingError).toContain('tanınamadı');
+  });
+
+  it('eksik teslimat bilgisi olan siparis icin teklif istenmez', async () => {
+    const { svc, geliver } = makeService({ order: { shippingAddress: '  ' } });
+    await expect(svc.offersForOrder('o1')).rejects.toThrow('Kargo için eksik bilgi');
+    expect(geliver.createDraftWithOffers).not.toHaveBeenCalled();
+  });
+
+  it('gonderisi olan siparise ikinci etiket alinamaz', async () => {
+    const { svc, geliver } = makeService({ order: { geliverShipmentId: 'shp1' } });
+    await expect(svc.createForOrder('o1', 'of99')).rejects.toThrow('zaten bir gönderi var');
+    expect(geliver.acceptOffer).not.toHaveBeenCalled();
+  });
+
+  it('teslimat bilgisi guncellemesi desi ve il dogrular', async () => {
+    const { svc, orders } = makeService();
+    const saved = await svc.updateShippingInfo('o1', {
+      shippingCity: 'İzmir',
+      shippingDesi: 4,
+    });
+    expect(saved.shippingCity).toBe('İzmir');
+    expect(saved.shippingDesi).toBe(4);
+    expect(saved.shippingError).toBeNull();
+    expect(orders.save).toHaveBeenCalled();
+
+    await expect(
+      svc.updateShippingInfo('o1', { shippingCity: 'Bilinmeyen' }),
+    ).rejects.toThrow('tanınamadı');
+  });
+
+  it('siparis bazli desi magaza varsayilanini ezer', async () => {
+    const { svc, geliver } = makeService({ order: { shippingDesi: 7 } });
+    await svc.autoCreateForOrder('o1');
+    expect(geliver.createDraftWithOffers.mock.calls[0][0].desi).toBe(7);
   });
 
   it('secilen teklifle olusturma dogru teklifi kabul eder', async () => {
