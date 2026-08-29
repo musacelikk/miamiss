@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { OrderStatus } from '../entities';
-import { GeliverService, cityCodeFromName } from './geliver.service';
+import { GeliverService, cityCodeFromName, normalizePhone } from './geliver.service';
 
 const makeConfig = (env: Record<string, string>) =>
   ({ get: (k: string) => env[k] } as unknown as ConfigService);
@@ -28,6 +28,16 @@ describe('cityCodeFromName', () => {
     expect(cityCodeFromName('Şanlıurfa')).toBe('63');
     expect(cityCodeFromName('sanliurfa')).toBe('63');
     expect(cityCodeFromName('Bilinmeyen Sehir')).toBeNull();
+  });
+});
+
+describe('normalizePhone', () => {
+  it('yerel formati Geliverin bekledigi +90 formatina cevirir', () => {
+    expect(normalizePhone('05551112233')).toBe('+905551112233');
+    expect(normalizePhone('0555 111 22 33')).toBe('+905551112233');
+    expect(normalizePhone('5551112233')).toBe('+905551112233');
+    expect(normalizePhone('905551112233')).toBe('+905551112233');
+    expect(normalizePhone('+905551112233')).toBe('+905551112233');
   });
 });
 
@@ -85,6 +95,7 @@ describe('GeliverService', () => {
     const body = JSON.parse(String(init.body));
     expect(body.test).toBe(true);
     expect(body.recipientAddress.name).toBe('Ali Veli');
+    expect(body.recipientAddress.phone).toBe('+905551112233');
     expect(body.recipientAddress.cityCode).toBe('34');
     expect(body.recipientAddress.districtName).toBe('Kadıköy');
     expect(body.order.orderNumber).toBe('MIA-1');

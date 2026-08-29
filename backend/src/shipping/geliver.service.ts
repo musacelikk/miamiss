@@ -46,6 +46,18 @@ export function cityCodeFromName(name: string): string | null {
   return CITY_CODES[normalized] ?? null;
 }
 
+/**
+ * Geliver telefonu +90XXXXXXXXXX formatinda ister; siparislerde 05xx...
+ * tutuldugundan burada normalize edilir (canli testte dogrulandi).
+ */
+export function normalizePhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('90') && digits.length === 12) return `+${digits}`;
+  if (digits.startsWith('0') && digits.length === 11) return `+9${digits}`;
+  if (digits.length === 10) return `+90${digits}`;
+  return phone.startsWith('+') ? phone : `+${digits}`;
+}
+
 export interface GeliverRecipient {
   name: string;
   phone: string;
@@ -174,7 +186,7 @@ export class GeliverService {
       recipientAddress: {
         name: input.recipient.name,
         email: input.recipient.email,
-        phone: input.recipient.phone,
+        phone: normalizePhone(input.recipient.phone),
         address1: input.recipient.address,
         countryCode: 'TR',
         cityCode,
