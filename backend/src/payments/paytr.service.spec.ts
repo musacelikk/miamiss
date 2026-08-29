@@ -95,5 +95,21 @@ describe('PaytrService', () => {
     expect(bodySent).toContain('card_number=4111111111111111');
     expect(bodySent).toContain('non_3d=0');
     expect(bodySent).toContain('payment_type=card');
+    // /odeme ucu bu iki alani zorunlu tutuyor
+    expect(bodySent).toContain('no_installment=1');
+    expect(bodySent).toContain('max_installment=0');
+  });
+
+  it('PAYTR_MAX_INSTALLMENT verilirse taksit acilir', async () => {
+    const svc = new PaytrService(makeConfig({ ...ENV, PAYTR_MAX_INSTALLMENT: '6' }));
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('<html>3d</html>'),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await svc.startPayment(ornekStart());
+    const bodySent = String(fetchMock.mock.calls[0][1].body);
+    expect(bodySent).toContain('no_installment=0');
+    expect(bodySent).toContain('max_installment=6');
   });
 });

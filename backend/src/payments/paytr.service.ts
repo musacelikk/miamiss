@@ -60,6 +60,21 @@ export class PaytrService {
     return this.config.get('PAYTR_TEST_MODE') === '0' ? '0' : '1';
   }
 
+  /**
+   * Taksit sayisi. Bos/0 ise tek cekim. Taksit acilacaksa PAYTR_MAX_INSTALLMENT
+   * ile en fazla taksit sayisi belirlenir (0 = magazanin izin verdigi en fazla).
+   */
+  private get maxInstallment(): string {
+    const raw = this.config.get<string>('PAYTR_MAX_INSTALLMENT');
+    const n = parseInt(raw ?? '', 10);
+    return Number.isFinite(n) && n >= 2 && n <= 12 ? String(n) : '0';
+  }
+
+  /** Taksit kapaliysa (tek cekim) PayTR'a no_installment=1 gonderilir. */
+  private get noInstallment(): string {
+    return this.maxInstallment === '0' ? '1' : '0';
+  }
+
   buildToken(p: { merchantOid: string; userIp: string; email: string; amount: string }): string {
     const raw =
       this.merchantId + p.userIp + p.merchantOid + p.email + p.amount +
@@ -95,6 +110,10 @@ export class PaytrService {
       currency: 'TL',
       test_mode: this.testMode,
       non_3d: '0',
+      // Direkt API dokumaninda listelenmez ama /odeme ucu bu iki alani
+      // zorunlu tutuyor (canlida "no_installment" hatasi veriyordu).
+      no_installment: this.noInstallment,
+      max_installment: this.maxInstallment,
       merchant_ok_url: p.okUrl,
       merchant_fail_url: p.failUrl,
       user_name: p.userName,
@@ -112,7 +131,8 @@ export class PaytrService {
       expiry_month: p.card.expiryMonth,
       expiry_year: p.card.expiryYear,
       cvv: p.card.cvv,
-      debug_on: '0',
+      // Test modunda PayTR ayrintili hata mesaji dondursun
+      debug_on: this.testMode,
       client_lang: 'tr',
     });
 
