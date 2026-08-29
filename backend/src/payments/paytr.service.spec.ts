@@ -90,6 +90,7 @@ describe('PaytrService', () => {
     global.fetch = fetchMock as unknown as typeof fetch;
     const html = await svc.startPayment(ornekStart());
     expect(html).toBe('<html>3d</html>');
+    expect(String(fetchMock.mock.calls[0][0])).toBe('https://www.paytr.com/odeme');
     const bodySent = String(fetchMock.mock.calls[0][1].body);
     expect(bodySent).toContain('card_number=4111111111111111');
     expect(bodySent).toContain('non_3d=0');

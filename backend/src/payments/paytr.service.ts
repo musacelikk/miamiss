@@ -35,7 +35,8 @@ export interface PaytrStartParams {
   card: PaytrCard;
 }
 
-const PAYTR_URL = 'https://secure.paytr.com/odeme';
+// Direct API uc adresi (secure.paytr.com DNS'te yok — canlida dogrulandi)
+const PAYTR_URL = 'https://www.paytr.com/odeme';
 
 @Injectable()
 export class PaytrService {
