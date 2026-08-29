@@ -15,8 +15,24 @@ interface Offer {
   estimatedTime: string
 }
 
+interface City {
+  code: string
+  name: string
+}
+
 const field =
   "w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs outline-none focus:border-primary"
+
+/** Girilen il adini listedeki resmi adla esler (buyuk/kucuk + TR/EN karakter farkindan bagimsiz). */
+function normalizePlace(name: string) {
+  return name
+    .replace(/ı/g, "i")
+    .replace(/I/g, "i")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+}
 
 /** Kargo icin duzeltilebilen teslimat alanlari. */
 function ShippingInfoForm({
@@ -36,9 +52,35 @@ function ShippingInfoForm({
     shippingDesi: order.shippingDesi != null ? String(order.shippingDesi) : "",
   })
   const [saving, setSaving] = useState(false)
+  const [cities, setCities] = useState<City[]>([])
+  const [districts, setDistricts] = useState<string[] | null>(null)
 
   const set = (key: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
+
+  useEffect(() => {
+    api<City[]>("/admin/shipping/cities")
+      .then(setCities)
+      .catch(() => setCities([]))
+  }, [])
+
+  // Secili ilin plaka kodu; adres serbest metinle geldigi icin normalize ederek buluruz
+  const cityCode =
+    cities.find((c) => normalizePlace(c.name) === normalizePlace(form.shippingCity))?.code ?? ""
+
+  useEffect(() => {
+    if (!cityCode) {
+      setDistricts(null)
+      return
+    }
+    let active = true
+    api<string[]>(`/admin/shipping/districts?cityCode=${cityCode}`)
+      .then((d) => active && setDistricts(d))
+      .catch(() => active && setDistricts([]))
+    return () => {
+      active = false
+    }
+  }, [cityCode])
 
   const save = async () => {
     setSaving(true)
@@ -78,21 +120,60 @@ function ShippingInfoForm({
         </label>
         <label className="space-y-1">
           <span className="text-[11px] text-muted-foreground">İl</span>
-          <input
+          <select
             className={field}
-            value={form.shippingCity}
-            onChange={set("shippingCity")}
-            placeholder="İstanbul"
-          />
+            value={cityCode}
+            onChange={(e) => {
+              const picked = cities.find((c) => c.code === e.target.value)
+              setForm((f) => ({
+                ...f,
+                shippingCity: picked?.name ?? "",
+                shippingDistrict: "",
+              }))
+            }}
+          >
+            <option value="">
+              {form.shippingCity ? `Tanınmadı: ${form.shippingCity}` : "İl seçin"}
+            </option>
+            {cities.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="space-y-1">
           <span className="text-[11px] text-muted-foreground">İlçe</span>
-          <input
-            className={field}
-            value={form.shippingDistrict}
-            onChange={set("shippingDistrict")}
-            placeholder="Kadıköy"
-          />
+          {districts && districts.length > 0 ? (
+            <select
+              className={field}
+              value={
+                districts.some((d) => normalizePlace(d) === normalizePlace(form.shippingDistrict))
+                  ? districts.find(
+                      (d) => normalizePlace(d) === normalizePlace(form.shippingDistrict),
+                    )
+                  : ""
+              }
+              onChange={(e) => setForm((f) => ({ ...f, shippingDistrict: e.target.value }))}
+            >
+              <option value="">
+                {form.shippingDistrict ? `Tanınmadı: ${form.shippingDistrict}` : "İlçe seçin"}
+              </option>
+              {districts.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          ) : (
+            // Geliver kapali/ulasilamaz ise ilce serbest metin kalir
+            <input
+              className={field}
+              value={form.shippingDistrict}
+              onChange={set("shippingDistrict")}
+              placeholder="Kadıköy"
+            />
+          )}
         </label>
       </div>
       <label className="block space-y-1">

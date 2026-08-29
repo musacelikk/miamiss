@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UnauthorizedException,
   UseGuards,
   ValidationPipe,
@@ -100,6 +101,18 @@ export class AdminShippingController {
   @Get('config')
   config() {
     return { enabled: this.shipping.enabled };
+  }
+
+  /** Il secimi icin 81 il (plaka kodu + resmi ad). */
+  @Get('cities')
+  cities() {
+    return this.shipping.cities();
+  }
+
+  /** Secilen ilin Geliver'de tanimli ilceleri. */
+  @Get('districts')
+  districts(@Query('cityCode') cityCode: string) {
+    return this.shipping.districts(cityCode);
   }
 }
 

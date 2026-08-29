@@ -6,7 +6,9 @@ import { SettingsService } from '../settings/settings.service';
 import { MailService } from '../mail/mail.service';
 import { LogsService } from '../logs/logs.service';
 import {
+  CITIES,
   cityCodeFromName,
+  cityNameFromCode,
   GeliverOffer,
   GeliverService,
   GeliverShipmentInput,
@@ -46,6 +48,27 @@ export class ShippingService {
 
   get enabled(): boolean {
     return this.geliver.enabled;
+  }
+
+  /** Admin panelindeki il secimi (Geliver'e bagli degil, her zaman doner). */
+  cities(): { code: string; name: string }[] {
+    return CITIES;
+  }
+
+  /**
+   * Secilen ilin ilceleri. Geliver kapali veya ulasilamazsa bos liste doner;
+   * panel bu durumda ilceyi serbest metin olarak almaya devam eder.
+   */
+  async districts(cityCode: string): Promise<string[]> {
+    if (!cityCode || !cityNameFromCode(cityCode)) {
+      throw new BadRequestException('Geçersiz il kodu.');
+    }
+    if (!this.geliver.enabled) return [];
+    try {
+      return await this.geliver.listDistricts(cityCode);
+    } catch {
+      return [];
+    }
   }
 
   /**
@@ -138,6 +161,22 @@ export class ShippingService {
     }
 
     this.assertShippable(order);
+
+    // Il adini resmi yazima cevir ki sonraki eslesmeler sorunsuz olsun
+    const cityCode = cityCodeFromName(order.shippingCity) as string;
+    order.shippingCity = cityNameFromCode(cityCode) ?? order.shippingCity;
+
+    // Ilceyi de simdi dogrula; gonderi anina birakmak yerine admin hemen gorsun
+    if (this.geliver.enabled) {
+      const resolved = await this.geliver.resolveDistrict(cityCode, order.shippingDistrict);
+      if (!resolved) {
+        throw new BadRequestException(
+          `"${order.shippingDistrict}" ilçesi ${order.shippingCity} için tanınamadı. Listeden seçin.`,
+        );
+      }
+      order.shippingDistrict = resolved;
+    }
+
     order.shippingError = null;
     return this.orders.save(order);
   }

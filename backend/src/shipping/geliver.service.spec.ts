@@ -1,6 +1,13 @@
 import { ConfigService } from '@nestjs/config';
 import { OrderStatus } from '../entities';
-import { GeliverService, cityCodeFromName, normalizePhone } from './geliver.service';
+import {
+  CITIES,
+  GeliverService,
+  cityCodeFromName,
+  cityNameFromCode,
+  normalizePhone,
+  normalizePlaceName,
+} from './geliver.service';
 
 const makeConfig = (env: Record<string, string>) =>
   ({ get: (k: string) => env[k] } as unknown as ConfigService);
@@ -20,14 +27,49 @@ const ornekInput = () => ({
   desi: 2,
 });
 
+describe('normalizePlaceName', () => {
+  it('buyuk-kucuk harf, TR/EN karakter ve noktalama farklarini siler', () => {
+    // "i" ve "ı" ayri harf oldugu icin dort yazim da ayni degeri uretmeli
+    for (const yazim of ['İSTANBUL', 'Istanbul', 'ıstanbul', 'istanbul', 'İstanbul']) {
+      expect(normalizePlaceName(yazim)).toBe('istanbul');
+    }
+    expect(normalizePlaceName('Afyon Karahisar')).toBe('afyonkarahisar');
+    expect(normalizePlaceName('K. Maraş')).toBe('kmaras');
+    expect(normalizePlaceName('  Kadıköy  ')).toBe('kadikoy');
+  });
+});
+
 describe('cityCodeFromName', () => {
   it('turkce karakter ve buyuk/kucuk harften bagimsiz plaka kodu doner', () => {
     expect(cityCodeFromName('İstanbul')).toBe('34');
     expect(cityCodeFromName('istanbul')).toBe('34');
+    expect(cityCodeFromName('ISTANBUL')).toBe('34');
+    expect(cityCodeFromName('Istanbul')).toBe('34');
     expect(cityCodeFromName('IZMIR')).toBe('35');
     expect(cityCodeFromName('Şanlıurfa')).toBe('63');
     expect(cityCodeFromName('sanliurfa')).toBe('63');
     expect(cityCodeFromName('Bilinmeyen Sehir')).toBeNull();
+  });
+
+  it('bosluklu, noktali ve kisa yazimlari da esler', () => {
+    expect(cityCodeFromName('Afyon Karahisar')).toBe('03');
+    expect(cityCodeFromName('afyon')).toBe('03');
+    expect(cityCodeFromName('K. Maraş')).toBe('46');
+    expect(cityCodeFromName('KAHRAMANMARAŞ')).toBe('46');
+    expect(cityCodeFromName('Hakkâri')).toBe('30');
+    expect(cityCodeFromName('hakkari')).toBe('30');
+    expect(cityCodeFromName('Iğdır')).toBe('76');
+    expect(cityCodeFromName('igdir')).toBe('76');
+    expect(cityCodeFromName('Içel')).toBe('33');
+    expect(cityCodeFromName('MERSİN')).toBe('33');
+  });
+
+  it('81 il eksiksiz ve her il kendi resmi adiyla eslesiyor', () => {
+    expect(CITIES).toHaveLength(81);
+    for (const city of CITIES) {
+      expect(cityCodeFromName(city.name)).toBe(city.code);
+      expect(cityNameFromCode(city.code)).toBe(city.name);
+    }
   });
 });
 
@@ -50,31 +92,44 @@ describe('GeliverService', () => {
     );
   });
 
+  /** Ilce listesi ve gonderi olusturma ayri uclara gittigi icin URL'e gore yanit verir. */
+  const makeFetchMock = (districts: { name: string }[] | null = [{ name: 'Kadıköy' }]) =>
+    jest.fn().mockImplementation((url: string) => {
+      if (String(url).includes('/districts')) {
+        return Promise.resolve({
+          ok: districts !== null,
+          status: districts === null ? 500 : 200,
+          json: () => Promise.resolve({ result: districts !== null, data: districts }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            result: true,
+            data: {
+              id: 'shp1',
+              offers: {
+                cheapest: { id: 'of1' },
+                list: [
+                  {
+                    id: 'of1',
+                    totalAmount: '89.90',
+                    currency: 'TL',
+                    providerCode: 'YURTICI',
+                    providerServiceCode: 'YURTICI_STD',
+                    averageEstimatedTimeHumanReadible: '01 gün',
+                  },
+                ],
+              },
+            },
+          }),
+      });
+    });
+
   it('gonderi olusturma bearer token ve alici bilgisiyle gider, teklifler donulur', async () => {
     const svc = new GeliverService(makeConfig({ GELIVER_API_TOKEN: 'tok123', GELIVER_TEST_MODE: '1' }));
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          result: true,
-          data: {
-            id: 'shp1',
-            offers: {
-              cheapest: { id: 'of1' },
-              list: [
-                {
-                  id: 'of1',
-                  totalAmount: '89.90',
-                  currency: 'TL',
-                  providerCode: 'YURTICI',
-                  providerServiceCode: 'YURTICI_STD',
-                  averageEstimatedTimeHumanReadible: '01 gün',
-                },
-              ],
-            },
-          },
-        }),
-    });
+    const fetchMock = makeFetchMock();
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const draft = await svc.createDraftWithOffers(ornekInput());
@@ -89,7 +144,9 @@ describe('GeliverService', () => {
       estimatedTime: '01 gün',
     });
 
-    const [url, init] = fetchMock.mock.calls[0];
+    const shipmentCall = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/shipments'));
+    expect(shipmentCall).toBeDefined();
+    const [url, init] = shipmentCall as [string, { headers: Record<string, string>; body: string }];
     expect(String(url)).toBe('https://api.geliver.io/api/v1/shipments');
     expect(init.headers.Authorization).toBe('Bearer tok123');
     const body = JSON.parse(String(init.body));
@@ -97,8 +154,63 @@ describe('GeliverService', () => {
     expect(body.recipientAddress.name).toBe('Ali Veli');
     expect(body.recipientAddress.phone).toBe('+905551112233');
     expect(body.recipientAddress.cityCode).toBe('34');
+    expect(body.recipientAddress.cityName).toBe('İstanbul');
     expect(body.recipientAddress.districtName).toBe('Kadıköy');
     expect(body.order.orderNumber).toBe('MIA-1');
+  });
+
+  it('serbest metin ilce Geliverin yazimina cevrilerek gonderilir', async () => {
+    const svc = new GeliverService(makeConfig({ GELIVER_API_TOKEN: 'tok123' }));
+    const fetchMock = makeFetchMock([{ name: 'Kadıköy' }, { name: 'Beşiktaş' }]);
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const input = ornekInput();
+    input.recipient.district = 'BESIKTAS';
+    await svc.createDraftWithOffers(input);
+
+    const shipmentCall = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/shipments'));
+    const body = JSON.parse(String((shipmentCall as [string, { body: string }])[1].body));
+    expect(body.recipientAddress.districtName).toBe('Beşiktaş');
+  });
+
+  it('listede olmayan ilce icin anlasilir hata verir', async () => {
+    const svc = new GeliverService(makeConfig({ GELIVER_API_TOKEN: 'tok123' }));
+    global.fetch = makeFetchMock([{ name: 'Kadıköy' }]) as unknown as typeof fetch;
+
+    const input = ornekInput();
+    input.recipient.district = 'Olmayan Ilce';
+    await expect(svc.createDraftWithOffers(input)).rejects.toThrow(
+      '"Olmayan Ilce" ilçesi İstanbul için tanınamadı',
+    );
+  });
+
+  it('ilce listesi alinamazsa girilen ilce ile devam edilir', async () => {
+    const svc = new GeliverService(makeConfig({ GELIVER_API_TOKEN: 'tok123' }));
+    const fetchMock = makeFetchMock(null);
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const input = ornekInput();
+    input.recipient.district = 'Kadikoy';
+    await svc.createDraftWithOffers(input);
+
+    const shipmentCall = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/shipments'));
+    const body = JSON.parse(String((shipmentCall as [string, { body: string }])[1].body));
+    expect(body.recipientAddress.districtName).toBe('Kadikoy');
+  });
+
+  it('ilce listesi il bazinda onbellege alinir', async () => {
+    const svc = new GeliverService(makeConfig({ GELIVER_API_TOKEN: 'tok123' }));
+    const fetchMock = makeFetchMock();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await svc.listDistricts('34');
+    await svc.listDistricts('34');
+    const districtCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/districts'));
+    expect(districtCalls).toHaveLength(1);
+    expect(String(districtCalls[0][0])).toBe(
+      'https://api.geliver.io/api/v1/districts?countryCode=TR&cityCode=34',
+    );
+    expect(districtCalls[0][1].method).toBe('GET');
   });
 
   it('teklif kabulu transactions ucuna gider ve etiket bilgilerini doner', async () => {

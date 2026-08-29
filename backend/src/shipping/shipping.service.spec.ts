@@ -47,6 +47,14 @@ function makeService(
       labelUrl: 'http://label',
     }),
     cancelShipment: jest.fn().mockResolvedValue(undefined),
+    listDistricts: jest.fn().mockResolvedValue(['Kadıköy', 'Beşiktaş']),
+    // Gercek servis gibi: eslesirse Geliverin yazimini, eslesmezse null doner
+    resolveDistrict: jest.fn((_code: string, d: string) => {
+      const found = ['Kadıköy', 'Beşiktaş'].find(
+        (n) => n.toLocaleLowerCase('tr') === d.toLocaleLowerCase('tr'),
+      );
+      return Promise.resolve(found ?? null);
+    }),
     mapTrackingStatus: jest.fn((s: string) =>
       s === 'DELIVERED' ? OrderStatus.DELIVERED : s === 'TRANSIT' ? OrderStatus.SHIPPED : null,
     ),
@@ -132,6 +140,20 @@ describe('ShippingService', () => {
     await expect(
       svc.updateShippingInfo('o1', { shippingCity: 'Bilinmeyen' }),
     ).rejects.toThrow('tanınamadı');
+  });
+
+  it('serbest yazilan il adi resmi yazima cevrilerek kaydedilir', async () => {
+    const { svc } = makeService();
+    const saved = await svc.updateShippingInfo('o1', { shippingCity: 'ISTANBUL' });
+    expect(saved.shippingCity).toBe('İstanbul');
+  });
+
+  it('Geliverda olmayan ilce kaydedilmez', async () => {
+    const { svc, geliver } = makeService();
+    geliver.resolveDistrict.mockResolvedValue(null);
+    await expect(
+      svc.updateShippingInfo('o1', { shippingDistrict: 'Olmayan' }),
+    ).rejects.toThrow('ilçesi İstanbul için tanınamadı');
   });
 
   it('siparis bazli desi magaza varsayilanini ezer', async () => {

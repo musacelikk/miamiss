@@ -6,44 +6,91 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { OrderStatus } from '../entities';
 
+/** Plaka kodu + resmi il adi. Admin panelindeki il secimi de bu listeden beslenir. */
+export const CITIES: { code: string; name: string }[] = [
+  { code: '01', name: 'Adana' }, { code: '02', name: 'Adıyaman' },
+  { code: '03', name: 'Afyonkarahisar' }, { code: '04', name: 'Ağrı' },
+  { code: '05', name: 'Amasya' }, { code: '06', name: 'Ankara' },
+  { code: '07', name: 'Antalya' }, { code: '08', name: 'Artvin' },
+  { code: '09', name: 'Aydın' }, { code: '10', name: 'Balıkesir' },
+  { code: '11', name: 'Bilecik' }, { code: '12', name: 'Bingöl' },
+  { code: '13', name: 'Bitlis' }, { code: '14', name: 'Bolu' },
+  { code: '15', name: 'Burdur' }, { code: '16', name: 'Bursa' },
+  { code: '17', name: 'Çanakkale' }, { code: '18', name: 'Çankırı' },
+  { code: '19', name: 'Çorum' }, { code: '20', name: 'Denizli' },
+  { code: '21', name: 'Diyarbakır' }, { code: '22', name: 'Edirne' },
+  { code: '23', name: 'Elazığ' }, { code: '24', name: 'Erzincan' },
+  { code: '25', name: 'Erzurum' }, { code: '26', name: 'Eskişehir' },
+  { code: '27', name: 'Gaziantep' }, { code: '28', name: 'Giresun' },
+  { code: '29', name: 'Gümüşhane' }, { code: '30', name: 'Hakkâri' },
+  { code: '31', name: 'Hatay' }, { code: '32', name: 'Isparta' },
+  { code: '33', name: 'Mersin' }, { code: '34', name: 'İstanbul' },
+  { code: '35', name: 'İzmir' }, { code: '36', name: 'Kars' },
+  { code: '37', name: 'Kastamonu' }, { code: '38', name: 'Kayseri' },
+  { code: '39', name: 'Kırklareli' }, { code: '40', name: 'Kırşehir' },
+  { code: '41', name: 'Kocaeli' }, { code: '42', name: 'Konya' },
+  { code: '43', name: 'Kütahya' }, { code: '44', name: 'Malatya' },
+  { code: '45', name: 'Manisa' }, { code: '46', name: 'Kahramanmaraş' },
+  { code: '47', name: 'Mardin' }, { code: '48', name: 'Muğla' },
+  { code: '49', name: 'Muş' }, { code: '50', name: 'Nevşehir' },
+  { code: '51', name: 'Niğde' }, { code: '52', name: 'Ordu' },
+  { code: '53', name: 'Rize' }, { code: '54', name: 'Sakarya' },
+  { code: '55', name: 'Samsun' }, { code: '56', name: 'Siirt' },
+  { code: '57', name: 'Sinop' }, { code: '58', name: 'Sivas' },
+  { code: '59', name: 'Tekirdağ' }, { code: '60', name: 'Tokat' },
+  { code: '61', name: 'Trabzon' }, { code: '62', name: 'Tunceli' },
+  { code: '63', name: 'Şanlıurfa' }, { code: '64', name: 'Uşak' },
+  { code: '65', name: 'Van' }, { code: '66', name: 'Yozgat' },
+  { code: '67', name: 'Zonguldak' }, { code: '68', name: 'Aksaray' },
+  { code: '69', name: 'Bayburt' }, { code: '70', name: 'Karaman' },
+  { code: '71', name: 'Kırıkkale' }, { code: '72', name: 'Batman' },
+  { code: '73', name: 'Şırnak' }, { code: '74', name: 'Bartın' },
+  { code: '75', name: 'Ardahan' }, { code: '76', name: 'Iğdır' },
+  { code: '77', name: 'Yalova' }, { code: '78', name: 'Karabük' },
+  { code: '79', name: 'Kilis' }, { code: '80', name: 'Osmaniye' },
+  { code: '81', name: 'Düzce' },
+];
+
 /**
- * Il adi -> plaka kodu. Geliver alici adresinde cityCode (plaka) zorunlu;
- * siparislerde il serbest metin oldugundan normalize edip esleriz.
+ * Halk arasinda kullanilan eski/kisa adlar. Anahtarlar normalize edilmis
+ * haldedir; resmi adlar CITIES'ten geldigi icin burada tekrarlanmaz.
  */
-const CITY_CODES: Record<string, string> = {
-  adana: '01', adiyaman: '02', afyonkarahisar: '03', afyon: '03', agri: '04',
-  amasya: '05', ankara: '06', antalya: '07', artvin: '08', aydin: '09',
-  balikesir: '10', bilecik: '11', bingol: '12', bitlis: '13', bolu: '14',
-  burdur: '15', bursa: '16', canakkale: '17', cankiri: '18', corum: '19',
-  denizli: '20', diyarbakir: '21', edirne: '22', elazig: '23', erzincan: '24',
-  erzurum: '25', eskisehir: '26', gaziantep: '27', giresun: '28', gumushane: '29',
-  hakkari: '30', hatay: '31', isparta: '32', mersin: '33', icel: '33',
-  istanbul: '34', izmir: '35', kars: '36', kastamonu: '37', kayseri: '38',
-  kirklareli: '39', kirsehir: '40', kocaeli: '41', izmit: '41', konya: '42',
-  kutahya: '43', malatya: '44', manisa: '45', kahramanmaras: '46', maras: '46',
-  mardin: '47', mugla: '48', mus: '49', nevsehir: '50', nigde: '51',
-  ordu: '52', rize: '53', sakarya: '54', adapazari: '54', samsun: '55',
-  siirt: '56', sinop: '57', sivas: '58', tekirdag: '59', tokat: '60',
-  trabzon: '61', tunceli: '62', sanliurfa: '63', urfa: '63', usak: '64',
-  van: '65', yozgat: '66', zonguldak: '67', aksaray: '68', bayburt: '69',
-  karaman: '70', kirikkale: '71', batman: '72', sirnak: '73', bartin: '74',
-  ardahan: '75', igdir: '76', yalova: '77', karabuk: '78', kilis: '79',
-  osmaniye: '80', duzce: '81',
+const CITY_ALIASES: Record<string, string> = {
+  afyon: '03', icel: '33', izmit: '41', adapazari: '54',
+  antep: '27', maras: '46', kmaras: '46', urfa: '63',
 };
 
-/** Turkce karakterleri sadeleyip il adini plaka koduna cevirir; bulunamazsa null. */
-export function cityCodeFromName(name: string): string | null {
-  const normalized = name
-    .trim()
-    .toLocaleLowerCase('tr-TR')
+/**
+ * Il/ilce adlarini karsilastirilabilir hale getirir: buyuk-kucuk harf,
+ * Turkce-Ingilizce karakter ve bosluk/noktalama farklarini siler.
+ *
+ * "İSTANBUL", "Istanbul", "ıstanbul" ve "istanbul" ayni degeri uretir.
+ * NFD ayrimi sayesinde ş->s, ğ->g, ü->u, ö->o, ç->c, â->a kendiliginden olur;
+ * "ı" ve "I" ayri harf oldugundan once elle "i"ye cevrilir.
+ */
+export function normalizePlaceName(name: string): string {
+  return name
     .replace(/ı/g, 'i')
-    .replace(/i̇/g, 'i')
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c');
-  return CITY_CODES[normalized] ?? null;
+    .replace(/I/g, 'i')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+const CITY_CODES: Record<string, string> = {
+  ...Object.fromEntries(CITIES.map((c) => [normalizePlaceName(c.name), c.code])),
+  ...CITY_ALIASES,
+};
+
+/** Il adini plaka koduna cevirir; eslesmezse null. */
+export function cityCodeFromName(name: string): string | null {
+  return CITY_CODES[normalizePlaceName(name)] ?? null;
+}
+
+/** Plaka kodundan resmi il adi; Geliver'e adi da bu listeden gonderilir. */
+export function cityNameFromCode(code: string): string | null {
+  return CITIES.find((c) => c.code === code)?.name ?? null;
 }
 
 /**
@@ -149,6 +196,44 @@ export class GeliverService {
     return json.data as T;
   }
 
+  /**
+   * Ilce listesi Geliver'den gelir; il bazinda onbellege alinir cunku
+   * her gonderide tekrar sorgulamak gereksiz gecikme yaratir.
+   */
+  private districtCache = new Map<string, string[]>();
+
+  async listDistricts(cityCode: string): Promise<string[]> {
+    const cached = this.districtCache.get(cityCode);
+    if (cached) return cached;
+    const data = await this.request<{ name?: string }[]>(
+      `/districts?countryCode=TR&cityCode=${cityCode}`,
+      undefined,
+      'GET',
+    );
+    const names = (Array.isArray(data) ? data : [])
+      .map((d) => d.name?.trim())
+      .filter((n): n is string => Boolean(n));
+    if (names.length) this.districtCache.set(cityCode, names);
+    return names;
+  }
+
+  /**
+   * Serbest metin ilceyi Geliver'in tanidigi yazima cevirir. Liste alinamazsa
+   * (API/token sorunu) girilen deger oldugu gibi kullanilir — kargo akisi
+   * ilce dogrulamasi yuzunden tamamen durmasin.
+   */
+  async resolveDistrict(cityCode: string, district: string): Promise<string | null> {
+    let names: string[];
+    try {
+      names = await this.listDistricts(cityCode);
+    } catch {
+      return district.trim();
+    }
+    if (!names.length) return district.trim();
+    const target = normalizePlaceName(district);
+    return names.find((n) => normalizePlaceName(n) === target) ?? null;
+  }
+
   private mapOffer(o: RawOffer): GeliverOffer {
     return {
       id: o.id,
@@ -171,6 +256,13 @@ export class GeliverService {
         `"${input.recipient.city}" ili tanınamadı. Sipariş adresindeki il adını kontrol edin.`,
       );
     }
+    // Geliver ilceyi kendi yazimiyla bekliyor; serbest metni listeye esleriz
+    const districtName = await this.resolveDistrict(cityCode, input.recipient.district);
+    if (!districtName) {
+      throw new BadRequestException(
+        `"${input.recipient.district}" ilçesi ${cityNameFromCode(cityCode)} için tanınamadı. Teslimat bilgilerinden ilçeyi listeden seçin.`,
+      );
+    }
     const data = await this.request<{
       id: string;
       offers?: { cheapest?: RawOffer | null; list?: RawOffer[] | null } | null;
@@ -190,7 +282,8 @@ export class GeliverService {
         address1: input.recipient.address,
         countryCode: 'TR',
         cityCode,
-        districtName: input.recipient.district,
+        cityName: cityNameFromCode(cityCode) ?? undefined,
+        districtName,
         zip: input.recipient.zip || undefined,
       },
       productPaymentOnDelivery: false,
