@@ -110,10 +110,17 @@ export class PaytrService {
       currency: 'TL',
       test_mode: this.testMode,
       non_3d: '0',
-      // Direkt API dokumaninda listelenmez ama /odeme ucu bu iki alani
-      // zorunlu tutuyor (canlida "no_installment" hatasi veriyordu).
+      /*
+       * Asagidaki dort alan Direkt API dokumaninda listelenmez, ancak /odeme
+       * ucu istegi ortak odeme sayfasi (spp) alan setiyle dogruluyor ve
+       * eksiklerinde "Zorunlu alan degeri gecersiz veya gonderilmedi
+       * (odeme spp): <alan>" hatasi donuyor. Hicbiri token hash'ine girmez.
+       */
       no_installment: this.noInstallment,
       max_installment: this.maxInstallment,
+      lang: 'tr',
+      // Odemenin tamamlanmasi icin verilen sure (dk); PayTR varsayilani da 30
+      timeout_limit: '30',
       merchant_ok_url: p.okUrl,
       merchant_fail_url: p.failUrl,
       user_name: p.userName,

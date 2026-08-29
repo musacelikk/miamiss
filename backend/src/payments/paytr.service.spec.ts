@@ -95,9 +95,11 @@ describe('PaytrService', () => {
     expect(bodySent).toContain('card_number=4111111111111111');
     expect(bodySent).toContain('non_3d=0');
     expect(bodySent).toContain('payment_type=card');
-    // /odeme ucu bu iki alani zorunlu tutuyor
+    // /odeme ucu bu alanlari spp alan setiyle zorunlu tutuyor
     expect(bodySent).toContain('no_installment=1');
     expect(bodySent).toContain('max_installment=0');
+    expect(bodySent).toContain('lang=tr');
+    expect(bodySent).toContain('timeout_limit=30');
   });
 
   it('PAYTR_MAX_INSTALLMENT verilirse taksit acilir', async () => {
