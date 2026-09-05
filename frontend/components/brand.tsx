@@ -14,3 +14,20 @@ export function Brand({ className }: { className?: string }) {
     </span>
   )
 }
+
+/**
+ * Ust bardaki marka yazisi: buyuk harf, genis harf araligi, serif.
+ * Renk ust elementten miras alinir (koyu/acik zeminde ayni kullanilir).
+ */
+export function BrandWordmark({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "font-display whitespace-nowrap uppercase leading-none tracking-[0.22em]",
+        className,
+      )}
+    >
+      Mia Misu Home
+    </span>
+  )
+}

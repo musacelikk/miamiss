@@ -27,8 +27,8 @@ export function CookieBanner() {
         <p className="flex-1 text-xs leading-relaxed text-muted-foreground">
           Alışveriş deneyiminizi iyileştirmek için sepet ve oturum bilgilerinizi
           cihazınızda saklıyoruz. Detaylar için{" "}
-          <Link href="/kvkk" className="font-semibold text-accent underline">
-            KVKK Aydınlatma Metni
+          <Link href="/cerez-politikasi" className="font-semibold text-accent underline">
+            Çerez Aydınlatma Metni
           </Link>
           'ni inceleyebilirsiniz.
         </p>

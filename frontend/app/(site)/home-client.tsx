@@ -111,37 +111,32 @@ export function HomeClient({
             style={{ opacity: overlay }}
             aria-hidden
           />
-          {/* pt-*: saydam header'ın altında kalmaması için üstten pay */}
-          <div className="relative z-10 mx-auto max-w-3xl px-4 pb-24 pt-28 text-center text-white sm:px-6 sm:pb-28 sm:pt-32">
-            <p className="eyebrow mb-4 text-white/80">{hp.heroEyebrow}</p>
-            <h1 className="font-display text-[2.65rem] leading-[1.06] sm:text-6xl lg:text-7xl">
-              {hp.heroTitle}{" "}
-              <span className="italic text-accent">{hp.heroTitleAccent}</span>
-              {hp.heroTitleSuffix}
-            </h1>
-            <p className="mx-auto mt-5 max-w-xl text-[0.95rem] leading-relaxed text-white/85 sm:text-lg">
-              {hp.heroSubtitle}
-            </p>
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-              <Link
-                href={hp.heroPrimaryUrl || "/urunler"}
-                className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-8 text-sm font-semibold tracking-wide text-primary-foreground transition-all hover:bg-accent sm:w-auto"
-              >
-                {hp.heroPrimaryText}
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-              {hp.heroSecondaryText && (
-                <Link
-                  href={hp.heroSecondaryUrl || "/hediye-karti"}
-                  className="inline-flex h-12 w-full items-center justify-center rounded-md border border-white/40 px-8 text-sm font-semibold tracking-wide text-white transition-colors hover:border-accent hover:text-accent sm:w-auto"
-                >
-                  {hp.heroSecondaryText}
-                </Link>
+          {/* pt-*: saydam header'ın altında kalmaması için üstten pay.
+              max-w-7xl + px: metin bloğu header'daki marka yazısıyla aynı hizada başlar */}
+          <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-24 pt-28 text-white sm:px-6 sm:pb-28 sm:pt-32">
+            <div className="max-w-2xl">
+              {hp.heroEyebrow && <p className="eyebrow mb-4 text-white/80">{hp.heroEyebrow}</p>}
+              <h1 className="font-display text-[2.65rem] leading-[1.06] sm:text-6xl lg:text-7xl">
+                {hp.heroTitle}{" "}
+                <span className="italic text-accent">{hp.heroTitleAccent}</span>
+                {hp.heroTitleSuffix}
+              </h1>
+              {hp.heroSubtitle && (
+                <p className="mt-5 max-w-xl text-[0.95rem] leading-relaxed text-white/85 sm:text-lg">
+                  {hp.heroSubtitle}
+                </p>
               )}
+              <div className="mt-9">
+                <Link
+                  href={hp.heroPrimaryUrl || "/urunler"}
+                  className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-8 text-sm font-semibold tracking-wide text-primary-foreground transition-all hover:bg-accent sm:w-auto"
+                >
+                  {hp.heroPrimaryText}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </div>
+              {hp.heroBadge && <p className="eyebrow mt-10 text-accent">{hp.heroBadge}</p>}
             </div>
-            {hp.heroBadge && (
-              <p className="eyebrow mt-10 text-accent">{hp.heroBadge}</p>
-            )}
           </div>
 
           {/* Tam ekran hero'da aşağıda içerik olduğunu belli eden ipucu */}

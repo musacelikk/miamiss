@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react"
 import { useAuth, useCart } from "@/components/providers"
-import { Logo } from "@/components/logo"
+import { BrandWordmark } from "@/components/brand"
 import { api, type HomepageSettings, type StoreSettings } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -130,7 +130,7 @@ export function SiteHeader({ heroOverlay = false }: { heroOverlay?: boolean }) {
               : "border-transparent bg-background",
         )}
       >
-        <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:h-20 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:h-20 sm:px-6">
           {/* Mobil menü */}
           <button
             className={cn("-ml-2 p-2 transition-colors lg:hidden", iconClass)}
@@ -140,80 +140,81 @@ export function SiteHeader({ heroOverlay = false }: { heroOverlay?: boolean }) {
             <Menu className="h-5 w-5" />
           </button>
 
-          {/* Logo — mobilde ikon sayısından bağımsız olarak tam ortada durur */}
+          {/* Marka — solda; mr-auto ile nav ve ikonları sağa yaslar */}
           <Link
             href="/"
-            aria-label="Miamisu Home anasayfa"
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 lg:static lg:translate-x-0 lg:translate-y-0"
+            aria-label="Mia Misu Home anasayfa"
+            className={cn("mr-auto transition-colors", iconClass)}
           >
-            <Logo dark={transparent} className="h-11 sm:h-14" />
+            <BrandWordmark className="text-[0.95rem] sm:text-xl" />
           </Link>
 
-          {/* Masaüstü nav — logo ve ikon grubunun genişliğinden bağımsız olarak
-              sayfanın tam ortasında dursun diye akıştan çıkarılıp konumlandırıldı */}
-          <nav className="hidden items-center gap-8 lg:absolute lg:inset-y-0 lg:left-1/2 lg:flex lg:-translate-x-1/2">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "relative text-sm font-medium tracking-wide transition-colors",
-                  "after:absolute after:-bottom-1.5 after:left-0 after:h-px after:bg-accent after:transition-all after:duration-300",
-                  iconClass,
-                  pathname === item.href
-                    ? cn("after:w-full", transparent ? "text-white" : "text-foreground")
-                    : "after:w-0 hover:after:w-full",
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          {/* Sağ ikonlar */}
-          <div className="flex items-center gap-0.5 sm:gap-1">
-            <button
-              className={cn("p-2 transition-colors", iconClass)}
-              onClick={() => setSearchOpen((v) => !v)}
-              aria-label="Ara"
-            >
-              <Search className="h-5 w-5" />
-            </button>
-            <Link
-              href="/begendiklerim"
-              className={cn("hidden p-2 transition-colors sm:block", iconClass)}
-              aria-label="Beğendiklerim"
-            >
-              <Heart className="h-5 w-5" />
-            </Link>
-            <Link
-              href={user ? "/hesabim" : "/giris"}
-              className={cn("p-2 transition-colors", iconClass)}
-              aria-label={user ? `Hesabım (${user.name})` : "Giriş yap"}
-            >
-              {user ? (
-                <span
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground ring-2 ring-accent/25 transition-transform hover:scale-105"
-                  title={user.name}
+          {/* Masaüstü nav + ikonlar tek grup halinde sağda */}
+          <div className="flex items-center gap-2 lg:gap-8">
+            <nav className="hidden items-center gap-8 lg:flex">
+              {NAV.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "relative text-sm font-medium tracking-wide transition-colors",
+                    "after:absolute after:-bottom-1.5 after:left-0 after:h-px after:bg-accent after:transition-all after:duration-300",
+                    iconClass,
+                    pathname === item.href
+                      ? cn("after:w-full", transparent ? "text-white" : "text-foreground")
+                      : "after:w-0 hover:after:w-full",
+                  )}
                 >
-                  {user.name.trim().charAt(0).toLocaleUpperCase("tr-TR")}
-                </span>
-              ) : (
-                <UserIcon className="h-5 w-5" />
-              )}
-            </Link>
-            <Link
-              href="/sepet"
-              className={cn("relative p-2 transition-colors", iconClass)}
-              aria-label="Sepet"
-            >
-              <ShoppingBag className="h-5 w-5" />
-              {count > 0 && (
-                <span className="absolute -top-0.5 right-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-foreground">
-                  {count}
-                </span>
-              )}
-            </Link>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+
+            {/* Sağ ikonlar */}
+            <div className="flex items-center gap-0.5 sm:gap-1">
+              <button
+                className={cn("p-2 transition-colors", iconClass)}
+                onClick={() => setSearchOpen((v) => !v)}
+                aria-label="Ara"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+              <Link
+                href="/begendiklerim"
+                className={cn("hidden p-2 transition-colors sm:block", iconClass)}
+                aria-label="Beğendiklerim"
+              >
+                <Heart className="h-5 w-5" />
+              </Link>
+              <Link
+                href={user ? "/hesabim" : "/giris"}
+                className={cn("p-2 transition-colors", iconClass)}
+                aria-label={user ? `Hesabım (${user.name})` : "Giriş yap"}
+              >
+                {user ? (
+                  <span
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground ring-2 ring-accent/25 transition-transform hover:scale-105"
+                    title={user.name}
+                  >
+                    {user.name.trim().charAt(0).toLocaleUpperCase("tr-TR")}
+                  </span>
+                ) : (
+                  <UserIcon className="h-5 w-5" />
+                )}
+              </Link>
+              <Link
+                href="/sepet"
+                className={cn("relative p-2 transition-colors", iconClass)}
+                aria-label="Sepet"
+              >
+                <ShoppingBag className="h-5 w-5" />
+                {count > 0 && (
+                  <span className="absolute -top-0.5 right-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-foreground">
+                    {count}
+                  </span>
+                )}
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -249,7 +250,7 @@ export function SiteHeader({ heroOverlay = false }: { heroOverlay?: boolean }) {
           />
           <div className="absolute inset-y-0 left-0 flex w-[85%] max-w-xs flex-col bg-background shadow-2xl animate-in slide-in-from-left duration-300">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <Logo className="h-10" />
+              <BrandWordmark className="text-base" />
               <button onClick={() => setMobileOpen(false)} aria-label="Menüyü kapat" className="p-1">
                 <X className="h-5 w-5" />
               </button>

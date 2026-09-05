@@ -52,15 +52,16 @@ describe('PaytrService', () => {
       merchantOid: 'MIAABC123',
       userIp: '1.2.3.4',
       email: 'a@b.com',
-      amount: '125050',
+      amount: '1250.50',
     });
     const raw =
-      '123456' + '1.2.3.4' + 'MIAABC123' + 'a@b.com' + '125050' +
+      '123456' + '1.2.3.4' + 'MIAABC123' + 'a@b.com' + '1250.50' +
       'card' + '0' + 'TL' + '1' + '0' + 'testsalt';
     const expected = createHmac('sha256', 'testkey').update(raw).digest('base64');
     expect(token).toBe(expected);
   });
 
+  // Callback'te PayTR kurus bildirdigi icin siparis tutarini kurusa cevirip karsilastiririz
   it('toKurus tutari kurus tamsayisina cevirir ve kayan nokta hatasi yapmaz', () => {
     expect(PaytrService.toKurus(1250.5)).toBe('125050');
     expect(PaytrService.toKurus(1250.55)).toBe('125055');
@@ -110,7 +111,7 @@ describe('PaytrService', () => {
     expect(bodySent).toContain('timeout_limit=30');
   });
 
-  it('payment_amount kurus tamsayisi gider ve token ayni degerle hesaplanir', async () => {
+  it('payment_amount ondalikli gider ve token ayni degerle hesaplanir', async () => {
     const svc = new PaytrService(makeConfig(ENV));
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -120,16 +121,29 @@ describe('PaytrService', () => {
     await svc.startPayment(ornekStart());
 
     const sent = new URLSearchParams(String(fetchMock.mock.calls[0][1].body));
-    expect(sent.get('payment_amount')).toBe('125050');
+    // Kurus tamsayisi gonderilirse PayTR tutari TL sanip 100 katina cikariyor
+    expect(sent.get('payment_amount')).toBe('1250.50');
     // Imzanin bozulmamasi icin token, POST'lanan tutarin aynisiyla uretilmeli
     expect(sent.get('paytr_token')).toBe(
       svc.buildToken({
         merchantOid: 'MIAABC123',
         userIp: '1.2.3.4',
         email: 'a@b.com',
-        amount: '125050',
+        amount: '1250.50',
       }),
     );
+  });
+
+  it('80.90 TL tutari tam olarak 80.90 gonderilir', async () => {
+    const svc = new PaytrService(makeConfig(ENV));
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('<html>3d</html>'),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await svc.startPayment({ ...ornekStart(), amount: 80.9 });
+    const sent = new URLSearchParams(String(fetchMock.mock.calls[0][1].body));
+    expect(sent.get('payment_amount')).toBe('80.90');
   });
 
   it('PAYTR_MAX_INSTALLMENT verilirse taksit acilir', async () => {

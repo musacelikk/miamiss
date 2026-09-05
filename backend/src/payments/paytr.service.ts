@@ -110,9 +110,12 @@ export class PaytrService {
     if (!this.enabled) {
       throw new BadRequestException('Kredi kartı ile ödeme şu anda kullanılamıyor.');
     }
-    // spp dogrulayicisi tutari kurus tamsayisi olarak istiyor
-    // ("payment_amount degeri integer olmalidir").
-    const amount = PaytrService.toKurus(p.amount);
+    /*
+     * Direkt API tutari ondalikli bekler (80.90 = seksen lira doksan kurus).
+     * Kurus tamsayisi gonderildiginde PayTR bunu TL olarak okuyup tutari
+     * 100 katina cikariyordu (80.90 -> 8090 TL).
+     */
+    const amount = p.amount.toFixed(2);
     const form = new URLSearchParams({
       merchant_id: this.merchantId,
       user_ip: p.userIp,

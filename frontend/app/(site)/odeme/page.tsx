@@ -48,7 +48,14 @@ export default function CheckoutPage() {
     shippingZip: "",
     note: "",
   })
+  // Kart aktifse varsayilan secim kart olur; kullanici bir kez sectiyse
+  // config yaniti gec gelse bile secimi degistirmeyiz.
   const [payMethod, setPayMethod] = useState<PayMethod>("BANK_TRANSFER")
+  const payMethodTouched = useRef(false)
+  const choosePayMethod = (m: PayMethod) => {
+    payMethodTouched.current = true
+    setPayMethod(m)
+  }
   const [cardEnabled, setCardEnabled] = useState(false)
   const [card, setCard] = useState({ holder: "", number: "", month: "", year: "", cvv: "" })
   const [invoice, setInvoice] = useState({
@@ -84,7 +91,10 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     api<{ cardEnabled: boolean }>("/payments/config", { auth: false })
-      .then((c) => setCardEnabled(c.cardEnabled))
+      .then((c) => {
+        setCardEnabled(c.cardEnabled)
+        if (c.cardEnabled && !payMethodTouched.current) setPayMethod("CARD")
+      })
       .catch(() => {})
     // 3D'den basarisiz donus: fail_url buraya ?payment=failed ile getirir
     if (typeof window !== "undefined") {
@@ -518,10 +528,11 @@ export default function CheckoutPage() {
           {/* Ödeme yöntemi */}
           <section className="rounded-md border border-border bg-card p-6">
             <h2 className="font-display text-2xl">Ödeme Yöntemi</h2>
-            <div className="mt-4 space-y-3">
+            {/* Gorsel sira: kart once gelsin diye flex order kullanilir */}
+            <div className="mt-4 flex flex-col gap-3">
               <label
                 className={cn(
-                  "flex cursor-pointer items-start gap-4 rounded-md border p-4 transition-colors",
+                  "order-2 flex cursor-pointer items-start gap-4 rounded-md border p-4 transition-colors",
                   payMethod === "BANK_TRANSFER"
                     ? "border-accent bg-secondary/50"
                     : "border-border hover:border-accent/50",
@@ -531,7 +542,7 @@ export default function CheckoutPage() {
                   type="radio"
                   name="pay"
                   checked={payMethod === "BANK_TRANSFER"}
-                  onChange={() => setPayMethod("BANK_TRANSFER")}
+                  onChange={() => choosePayMethod("BANK_TRANSFER")}
                   className="mt-1 accent-[oklch(0.63_0.065_75)]"
                 />
                 <Landmark className="mt-0.5 h-5 w-5 text-accent" />
@@ -546,7 +557,7 @@ export default function CheckoutPage() {
               {hasProducts && (
                 <label
                   className={cn(
-                    "flex cursor-pointer items-start gap-4 rounded-md border p-4 transition-colors",
+                    "order-3 flex cursor-pointer items-start gap-4 rounded-md border p-4 transition-colors",
                     payMethod === "COD"
                       ? "border-accent bg-secondary/50"
                       : "border-border hover:border-accent/50",
@@ -556,7 +567,7 @@ export default function CheckoutPage() {
                     type="radio"
                     name="pay"
                     checked={payMethod === "COD"}
-                    onChange={() => setPayMethod("COD")}
+                    onChange={() => choosePayMethod("COD")}
                     className="mt-1 accent-[oklch(0.63_0.065_75)]"
                   />
                   <Banknote className="mt-0.5 h-5 w-5 text-accent" />
@@ -573,7 +584,7 @@ export default function CheckoutPage() {
               {cardEnabled ? (
                 <label
                   className={cn(
-                    "flex cursor-pointer items-start gap-4 rounded-md border p-4 transition-colors",
+                    "order-1 flex cursor-pointer items-start gap-4 rounded-md border p-4 transition-colors",
                     payMethod === "CARD"
                       ? "border-accent bg-secondary/50"
                       : "border-border hover:border-accent/50",
@@ -583,7 +594,7 @@ export default function CheckoutPage() {
                     type="radio"
                     name="pay"
                     checked={payMethod === "CARD"}
-                    onChange={() => setPayMethod("CARD")}
+                    onChange={() => choosePayMethod("CARD")}
                     className="mt-1 accent-[oklch(0.63_0.065_75)]"
                   />
                   <CreditCard className="mt-0.5 h-5 w-5 text-accent" />
@@ -678,7 +689,7 @@ export default function CheckoutPage() {
                   </div>
                 </label>
               ) : (
-                <div className="flex items-start gap-4 rounded-md border border-dashed border-border p-4 opacity-60">
+                <div className="order-1 flex items-start gap-4 rounded-md border border-dashed border-border p-4 opacity-60">
                   <CreditCard className="mt-0.5 h-5 w-5" />
                   <div>
                     <p className="text-sm font-semibold">

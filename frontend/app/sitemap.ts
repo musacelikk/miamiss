@@ -30,6 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/on-bilgilendirme`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${SITE_URL}/uyelik-sozlesmesi`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${SITE_URL}/kvkk`, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${SITE_URL}/cerez-politikasi`, changeFrequency: "yearly", priority: 0.2 },
   ]
 
   // Kategoriler

@@ -94,6 +94,7 @@ export function SiteFooter() {
                 { href: "/on-bilgilendirme", label: "Ön Bilgilendirme Formu" },
                 { href: "/uyelik-sozlesmesi", label: "Üyelik Sözleşmesi" },
                 { href: "/kvkk", label: "KVKK Aydınlatma Metni" },
+                { href: "/cerez-politikasi", label: "Çerez Aydınlatma Metni" },
                 { href: "/iade-degisim", label: "İade & Değişim" },
               ].map((l) => (
                 <li key={l.href}>

@@ -125,6 +125,21 @@ export class PaymentsController {
     if (order.paymentStatus === PaymentStatus.PAID) return 'OK';
 
     if (body.status === 'success') {
+      /*
+       * PayTR total_amount'i kurus cinsinden bildirir. Tutar siparisle
+       * uyusmuyorsa odeme yine kaydedilir (musteri parayi odedi) ama
+       * fark ayrica loglanir; boyle bir sapma format hatasinin isaretidir.
+       */
+      const expected = PaytrService.toKurus(order.grandTotal);
+      if (body.total_amount !== expected) {
+        this.logs.record({
+          userId: null,
+          email: order.email,
+          actorType: 'GUEST',
+          action: 'payment.amount_mismatch',
+          detail: `${order.orderNo} — tahsil edilen tutar siparişten farklı: PayTR ${body.total_amount} kuruş, sipariş ${expected} kuruş`,
+        });
+      }
       await this.ordersService.setPaymentStatus(order.id, PaymentStatus.PAID);
       this.logs.record({
         userId: null,
