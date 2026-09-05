@@ -134,6 +134,36 @@ describe('PaytrService', () => {
     );
   });
 
+  it('user_basket Direkt API icin ham JSON gider, Base64 degil', async () => {
+    const svc = new PaytrService(makeConfig(ENV));
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('<html>3d</html>'),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await svc.startPayment({
+      ...ornekStart(),
+      basket: [['Nola Dalga Vazosu', '80.90', 1]],
+    });
+    const sent = new URLSearchParams(String(fetchMock.mock.calls[0][1].body));
+    expect(sent.get('user_basket')).toBe('[["Nola Dalga Vazosu","80.90",1]]');
+    expect(sent.get('user_basket')?.startsWith('W1si')).toBe(false);
+  });
+
+  it('encodeBasket bos/gecersiz satirlari eleyip fiyatı iki ondaliga sabitler', () => {
+    expect(
+      PaytrService.encodeBasket([
+        ['  Mumluk  ', '80.9', 2],
+        ['', '10.00', 1],
+        ['Hatalı', '0', 1],
+      ]),
+    ).toBe('[["Mumluk","80.90",2]]');
+  });
+
+  it('encodeBasket hic gecerli satir yoksa hata verir', () => {
+    expect(() => PaytrService.encodeBasket([])).toThrow('boş veya geçersiz');
+  });
+
   it('80.90 TL tutari tam olarak 80.90 gonderilir', async () => {
     const svc = new PaytrService(makeConfig(ENV));
     const fetchMock = jest.fn().mockResolvedValue({

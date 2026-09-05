@@ -86,9 +86,10 @@ export class PaymentsController {
       userName: order.shippingName,
       userAddress: `${order.shippingAddress} ${order.shippingDistrict}/${order.shippingCity}`,
       userPhone: order.shippingPhone,
-      basket: order.items.map(
-        (i) => [i.name, i.unitPrice.toFixed(2), i.quantity] as [string, string, number],
-      ),
+      basket: (order.items ?? []).map((i) => {
+        const title = i.variantName ? `${i.name} (${i.variantName})` : i.name;
+        return [title, i.unitPrice.toFixed(2), i.quantity] as [string, string, number];
+      }),
       okUrl: `${site}/siparis-basarili?paytr=1`,
       failUrl: `${site}/odeme?payment=failed&orderNo=${order.orderNo}`,
       card: {

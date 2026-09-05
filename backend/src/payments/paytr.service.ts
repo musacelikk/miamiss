@@ -84,6 +84,29 @@ export class PaytrService {
   }
 
   /**
+   * Direkt API `user_basket` ham JSON bekler (iFrame'deki gibi Base64 degil).
+   * Satir: [urun adi, birim fiyat "12.50", adet]. Bos/gecersiz satirlar elenir.
+   */
+  static encodeBasket(basket: [string, string, number][]): string {
+    const lines = basket
+      .map(([name, price, qty]) => {
+        const title = String(name ?? '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 200);
+        const unit = Number(price);
+        const count = Math.max(1, Math.round(Number(qty) || 1));
+        if (!title || !Number.isFinite(unit) || unit <= 0) return null;
+        return [title, unit.toFixed(2), count] as [string, string, number];
+      })
+      .filter((row): row is [string, string, number] => row !== null);
+    if (!lines.length) {
+      throw new BadRequestException('Ödeme sepeti boş veya geçersiz.');
+    }
+    return JSON.stringify(lines);
+  }
+
+  /**
    * PayTR token'i POST'lanan degerlerin aynisiyla hesaplanmalidir; bu yuzden
    * `amount` alani forma yazilan kurus dizesiyle bire bir ayni olmali.
    */
@@ -143,7 +166,7 @@ export class PaytrService {
       user_name: p.userName,
       user_address: p.userAddress,
       user_phone: p.userPhone,
-      user_basket: Buffer.from(JSON.stringify(p.basket)).toString('base64'),
+      user_basket: PaytrService.encodeBasket(p.basket),
       paytr_token: this.buildToken({
         merchantOid: p.merchantOid,
         userIp: p.userIp,
