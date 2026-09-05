@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Order, OrderStatus } from '../entities';
+import { Order, OrderItemType, OrderStatus } from '../entities';
 import { SettingsService } from '../settings/settings.service';
 import { MailService } from '../mail/mail.service';
 import { LogsService } from '../logs/logs.service';
@@ -12,6 +12,7 @@ import {
   GeliverOffer,
   GeliverService,
   GeliverShipmentInput,
+  GeliverShipmentItem,
   GeliverShipmentResult,
 } from './geliver.service';
 
@@ -95,11 +96,28 @@ export class ShippingService {
     }
   }
 
+  /**
+   * Kargo etiketinde "ÜRÜNLER" bolumunde basilacak satirlar. Dijital hediye
+   * kartlari fiziksel gonderiye girmez. Geliver bos kalem listesini kabul
+   * etmedigi icin gonderilecek urun kalmazsa siparis numarasi tek satir olur.
+   */
+  private shipmentItems(order: Order): GeliverShipmentItem[] {
+    const lines = (order.items ?? [])
+      .filter((i) => i.itemType === OrderItemType.PRODUCT)
+      .map((i) => ({
+        // Etiket alani sinirli; uzun adlar kirpilir
+        title: `${i.name}${i.variantName ? ` (${i.variantName})` : ''}`.trim().slice(0, 100),
+        quantity: i.quantity,
+      }));
+    return lines.length ? lines : [{ title: `Sipariş ${order.orderNo}`, quantity: 1 }];
+  }
+
   private async shipmentInput(order: Order): Promise<GeliverShipmentInput> {
     const store = await this.settings.get();
     return {
       orderNo: order.orderNo,
       totalAmount: order.subtotal,
+      items: this.shipmentItems(order),
       recipient: {
         name: order.shippingName,
         phone: order.shippingPhone,
@@ -114,7 +132,11 @@ export class ShippingService {
   }
 
   private async findOrder(orderId: string): Promise<Order> {
-    const order = await this.orders.findOne({ where: { id: orderId } });
+    // items: kargo etiketindeki urun satirlari icin gerekli
+    const order = await this.orders.findOne({
+      where: { id: orderId },
+      relations: { items: true },
+    });
     if (!order) throw new NotFoundException('Sipariş bulunamadı.');
     return order;
   }
@@ -188,7 +210,9 @@ export class ShippingService {
   async autoCreateForOrder(orderId: string): Promise<void> {
     if (!this.geliver.enabled) return;
 
-    const order = await this.orders.findOne({ where: { id: orderId } }).catch(() => null);
+    const order = await this.orders
+      .findOne({ where: { id: orderId }, relations: { items: true } })
+      .catch(() => null);
     if (!order) return;
     if (order.labelUrl || order.geliverShipmentId) return;
     if (order.status === OrderStatus.CANCELLED) return;
@@ -251,6 +275,26 @@ export class ShippingService {
     }
     const result = await this.geliver.acceptOffer(acceptId);
     return this.applyShipment(order, result);
+  }
+
+  /**
+   * Siparisin iade kargosunu olusturur (musteri -> magaza). Geliver adresleri
+   * orijinal gonderiden ters cevirdigi icin siparisin Geliver gonderisi sart;
+   * kargo elle girilmis siparislerde iade kodu da elle girilmelidir.
+   */
+  async createReturnShipment(orderId: string): Promise<GeliverShipmentResult> {
+    const order = await this.findOrder(orderId);
+    if (!order.geliverShipmentId) {
+      throw new BadRequestException(
+        'Bu siparişin Geliver gönderisi yok, iade kargosu otomatik oluşturulamaz. Müşteriye kargo kodunu elle iletin.',
+      );
+    }
+    return this.geliver.createReturnShipment(order.geliverShipmentId);
+  }
+
+  /** Iade gonderisini iptal eder (siparisin kendi gonderisine dokunmaz). */
+  async cancelShipmentById(shipmentId: string): Promise<void> {
+    await this.geliver.cancelShipment(shipmentId);
   }
 
   async cancelForOrder(orderId: string): Promise<Order> {

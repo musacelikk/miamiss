@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Param,
@@ -35,6 +36,7 @@ import {
 } from '../auth/guards';
 import { MailService } from '../mail/mail.service';
 import { LogsService } from '../logs/logs.service';
+import { ReturnsService } from './returns.service';
 
 export const RETURN_REASONS = [
   'Ürün hasarlı ulaştı',
@@ -78,6 +80,7 @@ export class ReturnsController {
   constructor(
     @InjectRepository(ReturnRequest) private readonly returns: Repository<ReturnRequest>,
     @InjectRepository(Order) private readonly orders: Repository<Order>,
+    private readonly returnsService: ReturnsService,
     private readonly mail: MailService,
     private readonly logs: LogsService,
   ) {}
@@ -160,6 +163,10 @@ export class ReturnsController {
         status: true,
         adminNote: true,
         createdAt: true,
+        // Musteri kargo subesinde bu kodu kullanir
+        trackingNo: true,
+        cargoCompany: true,
+        labelUrl: true,
       },
     });
   }
@@ -181,35 +188,26 @@ export class ReturnsController {
     return { items, pending };
   }
 
+  /** Karar verir; onayda iade kargosunu otomatik olusturur. */
   @Patch('admin/returns/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  async decide(
-    @Param('id') id: string,
-    @Body() dto: DecideDto,
-    @CurrentUser() admin: AuthUser,
-  ) {
-    const request = await this.returns.findOne({ where: { id } });
-    if (!request) throw new NotFoundException('İade talebi bulunamadı.');
+  decide(@Param('id') id: string, @Body() dto: DecideDto, @CurrentUser() admin: AuthUser) {
+    return this.returnsService.decide(id, dto, admin);
+  }
 
-    request.status = dto.status;
-    if (dto.adminNote !== undefined) request.adminNote = dto.adminNote || null;
-    await this.returns.save(request);
+  /** Otomatik olusturma basarisiz olduysa iade kargosunu elle dener. */
+  @Post('admin/returns/:id/shipping')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  createShipment(@Param('id') id: string) {
+    return this.returnsService.createShipment(id);
+  }
 
-    this.mail.returnDecisionToCustomer(
-      request.email,
-      request.returnNo,
-      request.orderNo,
-      dto.status,
-      request.adminNote,
-    );
-    this.logs.record({
-      userId: admin!.id,
-      email: admin!.email,
-      actorType: 'ADMIN',
-      action: 'return.decide',
-      detail: `${request.returnNo} → ${dto.status}`,
-    });
-    return request;
+  @Delete('admin/returns/:id/shipping')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  cancelShipment(@Param('id') id: string) {
+    return this.returnsService.cancelShipment(id);
   }
 }

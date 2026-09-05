@@ -61,6 +61,33 @@ export class ReturnRequest {
   @Column({ type: 'text', nullable: true })
   adminNote: string | null;
 
+  /*
+   * Iade kargosu: talep onaylandiginda Geliver'de ters yonlu (musteri ->
+   * magaza) bir gonderi olusturulur. Musteri asagidaki kodu kargo subesinde
+   * soyleyerek paketi ucretsiz teslim eder.
+   */
+
+  @Column({ type: 'varchar', nullable: true })
+  geliverShipmentId: string | null;
+
+  /** Musterinin kargo subesinde verecegi iade kargo kodu */
+  @Column({ type: 'varchar', nullable: true })
+  trackingNo: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  cargoCompany: string | null;
+
+  /** Iade etiketi (PDF/barkod) adresi */
+  @Column({ type: 'varchar', nullable: true })
+  labelUrl: string | null;
+
+  /**
+   * Otomatik iade kargosu olusturulamadiysa sebebi. Admin panelde gosterilir;
+   * gonderi olusunca temizlenir.
+   */
+  @Column({ type: 'text', nullable: true })
+  shippingError: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

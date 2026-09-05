@@ -121,6 +121,13 @@ export interface GeliverShipmentInput {
   totalAmount: number;
   recipient: GeliverRecipient;
   desi: number;
+  /** Kargo etiketindeki "ÜRÜNLER" satirlari; bos gonderilemez */
+  items: GeliverShipmentItem[];
+}
+
+export interface GeliverShipmentItem {
+  title: string;
+  quantity: number;
 }
 
 export interface GeliverOffer {
@@ -274,7 +281,7 @@ export class GeliverService {
       distanceUnit: 'cm',
       weight: String(input.desi || 1),
       massUnit: 'kg',
-      items: [{ title: `Sipariş ${input.orderNo}`, quantity: 1 }],
+      items: input.items,
       recipientAddress: {
         name: input.recipient.name,
         email: input.recipient.email,
@@ -317,6 +324,44 @@ export class GeliverService {
     if (!s) throw new BadRequestException('Geliver yanıtında gönderi bilgisi yok.');
     return {
       shipmentId: s.id,
+      trackingNo: s.trackingNumber ?? s.barcode ?? null,
+      carrier: s.providerCode ?? null,
+      labelUrl: s.labelURL ?? null,
+    };
+  }
+
+  /**
+   * Iade (ters yonlu) gonderi olusturur ve etiketi ayni istekte satin alir.
+   *
+   * Adresleri Geliver kendisi ters cevirir: gonderici orijinal gonderinin
+   * alicisi (musteri), alici ise magazanin gonderici adresi olur. Bu yuzden
+   * ne alici ne gonderici adresi gonderilir — yalnizca orijinal gonderinin
+   * kimligi yeterlidir. `willAccept` uygun teklifi Geliver'in kabul edip
+   * etiketi satin almasini saglar, boylece tek istekte kargo kodu doner.
+   */
+  async createReturnShipment(originalShipmentId: string): Promise<GeliverShipmentResult> {
+    const data = await this.request<{
+      shipmentID?: string | null;
+      shipment?: {
+        id?: string | null;
+        barcode?: string | null;
+        trackingNumber?: string | null;
+        labelURL?: string | null;
+        providerCode?: string | null;
+      } | null;
+    }>(`/shipments/${encodeURIComponent(originalShipmentId)}`, {
+      isReturn: true,
+      willAccept: true,
+      count: 1,
+    });
+    const s = data.shipment ?? {};
+    // Iade gonderisinin kimligi bazi yanitlarda yalnizca ust seviyede gelir
+    const shipmentId = s.id ?? data.shipmentID;
+    if (!shipmentId) {
+      throw new BadRequestException('Geliver iade gönderisi kimliği döndürmedi.');
+    }
+    return {
+      shipmentId,
       trackingNo: s.trackingNumber ?? s.barcode ?? null,
       carrier: s.providerCode ?? null,
       labelUrl: s.labelURL ?? null,

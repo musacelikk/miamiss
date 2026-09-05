@@ -49,6 +49,10 @@ interface ReturnInfo {
   status: string
   adminNote: string | null
   createdAt: string
+  /** Onaylanan iadede kargo şubesinde verilecek kod */
+  trackingNo: string | null
+  cargoCompany: string | null
+  labelUrl: string | null
 }
 
 /* ---------- Zaman çizelgesi (tarih/saat tooltip'li) ---------- */
@@ -420,6 +424,34 @@ export function OrderCard({
                 <p className="mt-1 rounded bg-background/70 p-2 text-muted-foreground">
                   {r.adminNote}
                 </p>
+              )}
+              {/* Onaylanan iadede müşteri bu kodu kargo şubesinde söyler */}
+              {r.trackingNo && (
+                <div className="mt-2 rounded bg-background/70 p-2.5">
+                  <p className="text-muted-foreground">İade kargo kodunuz</p>
+                  <p className="mt-0.5 font-mono text-base font-bold tracking-wide">
+                    {r.trackingNo}
+                  </p>
+                  {r.cargoCompany && (
+                    <p className="mt-0.5 text-muted-foreground">
+                      Kargo firması: <span className="font-semibold">{r.cargoCompany}</span>
+                    </p>
+                  )}
+                  <p className="mt-1.5 text-muted-foreground">
+                    Ürünü orijinal paketinde kargo şubesine götürüp bu kodu belirtmeniz yeterli.
+                    Kargo ücreti tarafımızca karşılanır.
+                  </p>
+                  {r.labelUrl && (
+                    <a
+                      href={r.labelUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1.5 inline-block font-semibold text-accent underline"
+                    >
+                      İade etiketini görüntüle
+                    </a>
+                  )}
+                </div>
               )}
             </div>
           ))}

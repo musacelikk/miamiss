@@ -1,4 +1,4 @@
-import { OrderStatus } from '../entities';
+import { OrderItemType, OrderStatus } from '../entities';
 import { ShippingService } from './shipping.service';
 
 const ORDER = {
@@ -7,6 +7,10 @@ const ORDER = {
   email: 'a@b.com',
   status: OrderStatus.CONFIRMED,
   subtotal: 1250,
+  items: [
+    { itemType: OrderItemType.PRODUCT, name: 'Traverten Mumluk', variantName: 'Küçük', quantity: 2 },
+    { itemType: OrderItemType.PRODUCT, name: 'Rattan Sepet', variantName: null, quantity: 1 },
+  ] as { itemType: OrderItemType; name: string; variantName: string | null; quantity: number }[],
   shippingName: 'Ali Veli',
   shippingPhone: '05551112233',
   shippingCity: 'İstanbul',
@@ -47,6 +51,12 @@ function makeService(
       labelUrl: 'http://label',
     }),
     cancelShipment: jest.fn().mockResolvedValue(undefined),
+    createReturnShipment: jest.fn().mockResolvedValue({
+      shipmentId: 'ret1',
+      trackingNo: 'IADE1',
+      carrier: 'SURAT',
+      labelUrl: 'http://iade-label',
+    }),
     listDistricts: jest.fn().mockResolvedValue(['Kadıköy', 'Beşiktaş']),
     // Gercek servis gibi: eslesirse Geliverin yazimini, eslesmezse null doner
     resolveDistrict: jest.fn((_code: string, d: string) => {
@@ -83,6 +93,29 @@ describe('ShippingService', () => {
     expect(saved.trackingNo).toBe('TRK1');
     expect(saved.cargoCompany).toBe('YURTICI');
     expect(saved.labelUrl).toBe('http://label');
+  });
+
+  it('kargo etiketine siparis kalemlerinin adlari gonderilir', async () => {
+    const { svc, geliver } = makeService();
+    await svc.autoCreateForOrder('o1');
+    expect(geliver.createDraftWithOffers.mock.calls[0][0].items).toEqual([
+      { title: 'Traverten Mumluk (Küçük)', quantity: 2 },
+      { title: 'Rattan Sepet', quantity: 1 },
+    ]);
+  });
+
+  it('hediye karti kalemleri etikete girmez, urun yoksa siparis no yazilir', async () => {
+    const { svc, geliver } = makeService({
+      order: {
+        items: [
+          { itemType: OrderItemType.GIFT_CARD, name: 'Hediye Kartı', variantName: null, quantity: 1 },
+        ],
+      },
+    });
+    await svc.autoCreateForOrder('o1');
+    expect(geliver.createDraftWithOffers.mock.calls[0][0].items).toEqual([
+      { title: 'Sipariş MIA-1', quantity: 1 },
+    ]);
   });
 
   it('geliver kapaliysa otomatik olusturma sessizce atlanir', async () => {
@@ -266,5 +299,22 @@ describe('ShippingService', () => {
     });
     const saved = orders.save.mock.calls[0][0];
     expect(saved.trackingNo).toBe('TRKX');
+  });
+});
+
+describe('ShippingService iade kargosu', () => {
+  it('orijinal gonderi kimligiyle iade gonderisi olusturur', async () => {
+    const { svc, geliver } = makeService({ order: { geliverShipmentId: 'shp1' } });
+    const res = await svc.createReturnShipment('o1');
+    expect(geliver.createReturnShipment).toHaveBeenCalledWith('shp1');
+    expect(res.trackingNo).toBe('IADE1');
+  });
+
+  it('Geliver gonderisi olmayan siparis icin anlasilir hata verir', async () => {
+    const { svc, geliver } = makeService({ order: { geliverShipmentId: null } });
+    await expect(svc.createReturnShipment('o1')).rejects.toThrow(
+      'iade kargosu otomatik oluşturulamaz',
+    );
+    expect(geliver.createReturnShipment).not.toHaveBeenCalled();
   });
 });

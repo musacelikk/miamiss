@@ -415,28 +415,46 @@ export class MailService {
     );
   }
 
-  /** Iade karari musteriye bildirilir. */
+  /**
+   * Iade karari musteriye bildirilir. Iade kargosu olustuysa `shipment`
+   * verilir ve musteriye kargo subesinde soylemesi gereken kod yazilir.
+   */
   returnDecisionToCustomer(
     email: string,
     returnNo: string,
     orderNo: string,
     status: string,
     note: string | null,
+    shipment?: { trackingNo: string; carrier: string | null } | null,
   ): void {
+    const approvedText = shipment
+      ? 'onaylandı ✓ — iade kargo kodunuz hazır'
+      : 'onaylandı ✓ — kargo süreci için sizinle iletişime geçeceğiz';
     const statusText =
       status === 'APPROVED'
-        ? 'onaylandı ✓ — kargo süreci için sizinle iletişime geçeceğiz'
+        ? approvedText
         : status === 'REJECTED'
           ? 'maalesef reddedildi'
           : status === 'COMPLETED'
             ? 'tamamlandı, ücret iadeniz yapıldı'
             : 'güncellendi';
+    const shipmentBlock =
+      status === 'APPROVED' && shipment
+        ? `<div style="background:#f7f4ee;border-radius:6px;padding:16px;margin-top:12px;">
+             <p style="margin:0 0 6px;font-size:13px;">İade kargo kodunuz:</p>
+             <p style="margin:0;font-size:20px;font-weight:bold;letter-spacing:1px;">${escapeHtml(shipment.trackingNo)}</p>
+             ${shipment.carrier ? `<p style="margin:8px 0 0;font-size:13px;">Kargo firması: <strong>${escapeHtml(shipment.carrier)}</strong></p>` : ''}
+             <p style="margin:8px 0 0;font-size:13px;">Ürünü orijinal paketinde kargo şubesine götürüp
+             bu kodu belirtmeniz yeterli. Kargo ücreti tarafımızca karşılanır.</p>
+           </div>`
+        : '';
     this.send(
       email,
       `İade talebiniz ${status === 'APPROVED' ? 'onaylandı' : status === 'REJECTED' ? 'reddedildi' : 'güncellendi'} — ${returnNo}`,
       `<h2 style="margin:0 0 8px;font-family:Georgia,serif;">İade Talebiniz Hakkında</h2>
        <p style="font-size:14px;"><strong>${orderNo}</strong> siparişiniz için oluşturduğunuz
        <strong>${returnNo}</strong> numaralı iade talebiniz ${statusText}.</p>
+       ${shipmentBlock}
        ${note ? `<div style="background:#f7f4ee;border-radius:6px;padding:16px;font-size:14px;margin-top:12px;white-space:pre-wrap;">${escapeHtml(note)}</div>` : ''}`,
     );
   }

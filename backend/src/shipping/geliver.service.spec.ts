@@ -25,6 +25,7 @@ const ornekInput = () => ({
     zip: '34000',
   },
   desi: 2,
+  items: [{ title: 'Traverten Mumluk (Küçük)', quantity: 2 }],
 });
 
 describe('normalizePlaceName', () => {
@@ -157,6 +158,8 @@ describe('GeliverService', () => {
     expect(body.recipientAddress.cityName).toBe('İstanbul');
     expect(body.recipientAddress.districtName).toBe('Kadıköy');
     expect(body.order.orderNumber).toBe('MIA-1');
+    // Etikette siparis numarasi yerine gercek urun adlari basilmali
+    expect(body.items).toEqual([{ title: 'Traverten Mumluk (Küçük)', quantity: 2 }]);
   });
 
   it('serbest metin ilce Geliverin yazimina cevrilerek gonderilir', async () => {
@@ -259,6 +262,65 @@ describe('GeliverService', () => {
     }) as unknown as typeof fetch;
     const res = await svc.acceptOffer('of1');
     expect(res.trackingNo).toBe('BR123');
+  });
+
+  it('iade gonderisi orijinal gonderi ucuna isReturn+willAccept ile gider', async () => {
+    const svc = new GeliverService(makeConfig({ GELIVER_API_TOKEN: 'tok123' }));
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          result: true,
+          data: {
+            id: 'trx2',
+            shipment: {
+              id: 'ret1',
+              barcode: 'IADE123',
+              labelURL: 'http://iade-label.pdf',
+              providerCode: 'SURAT',
+            },
+          },
+        }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const res = await svc.createReturnShipment('shp1');
+    expect(res).toEqual({
+      shipmentId: 'ret1',
+      trackingNo: 'IADE123',
+      carrier: 'SURAT',
+      labelUrl: 'http://iade-label.pdf',
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe('https://api.geliver.io/api/v1/shipments/shp1');
+    // Adresler Geliver tarafinda ters cevrildigi icin adres gonderilmez
+    expect(JSON.parse(String(init.body))).toEqual({
+      isReturn: true,
+      willAccept: true,
+      count: 1,
+    });
+  });
+
+  it('iade yanitinda gonderi nesnesi yoksa ust seviye shipmentID kullanilir', async () => {
+    const svc = new GeliverService(makeConfig({ GELIVER_API_TOKEN: 'tok123' }));
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ result: true, data: { id: 'trx3', shipmentID: 'ret9' } }),
+    }) as unknown as typeof fetch;
+    const res = await svc.createReturnShipment('shp1');
+    expect(res.shipmentId).toBe('ret9');
+    expect(res.trackingNo).toBeNull();
+  });
+
+  it('iade yanitinda hicbir kimlik yoksa anlasilir hata verir', async () => {
+    const svc = new GeliverService(makeConfig({ GELIVER_API_TOKEN: 'tok123' }));
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ result: true, data: { id: 'trx4' } }),
+    }) as unknown as typeof fetch;
+    await expect(svc.createReturnShipment('shp1')).rejects.toThrow(
+      'iade gönderisi kimliği döndürmedi',
+    );
   });
 
   it('iptal DELETE /shipments/{id} olarak gider', async () => {
