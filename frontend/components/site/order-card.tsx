@@ -272,6 +272,10 @@ export function OrderCard({
           status: res.status,
           adminNote: null,
           createdAt: new Date().toISOString(),
+          // Yeni talepte kargo henuz yok; onay sonrasi track ile gelir
+          trackingNo: null,
+          cargoCompany: null,
+          labelUrl: null,
         },
         ...prev,
       ])

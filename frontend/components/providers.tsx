@@ -292,6 +292,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const clear = useCallback(() => {
     setItems([])
     setGiftCards([])
+    // Kalici kaydi da hemen bosalt. Sadece state'i sifirlamak yetmiyor: bu
+    // provider'in hydration effect'i alt bilesenlerin effect'lerinden sonra
+    // calistigi icin (ornegin kart odemesi sonrasi /siparis-basarili'ya
+    // donuste) localStorage'daki eski sepeti geri yukluyordu.
+    try {
+      localStorage.setItem(CART_KEY, JSON.stringify({ items: [], giftCards: [] }))
+    } catch {
+      /* storage kapali olabilir */
+    }
   }, [])
 
   /* Favorites */
