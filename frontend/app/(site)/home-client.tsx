@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { ArrowRight, ChevronDown, Gem, HandHeart, Package, Truck } from "lucide-react"
+import { ArrowRight, Gem, HandHeart, Package, Truck } from "lucide-react"
 import {
   DEFAULT_HOMEPAGE,
   imageUrl,
@@ -69,7 +69,7 @@ export function HomeClient({
         {mediaOrigin && <link rel="preconnect" href={mediaOrigin} crossOrigin="anonymous" />}
         {/* ===== Hero: tam ekran video/görsel arkaplan ===== */}
         {/* svh: mobil tarayıcı çubukları dahil tam ekran — altındaki bölüm görünmez */}
-        <section className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-primary">
+        <section className="relative flex min-h-[100svh] items-end overflow-hidden bg-primary">
           {/* Kapak görseli: ilk boyamada anında görünür, video hazır olunca altta kalır */}
           {poster && (
             /* eslint-disable-next-line @next/next/no-img-element */
@@ -107,21 +107,20 @@ export function HomeClient({
             )
           )}
           <div
-            className="absolute inset-0 bg-black"
-            style={{ opacity: overlay }}
+            className="absolute inset-0"
+            style={{ backgroundColor: "#000", opacity: overlay }}
             aria-hidden
           />
-          {/* Metnin durduğu sol tarafı ekstra karart: açık kayada beyaz yazı, gölgede koyu buton kaybolmasın */}
+          {/* Token değil gerçek siyah: koyu temada bg-black/from-black beyaza dönmesin */}
           <div
-            className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent"
+            className="absolute inset-0 bg-gradient-to-t from-[#000]/65 via-[#000]/30 to-transparent lg:bg-gradient-to-r lg:from-[#000]/55 lg:via-[#000]/25 lg:to-transparent"
             aria-hidden
           />
-          {/* pt-*: saydam header'ın altında kalmaması için üstten pay.
-              max-w-7xl + px: metin bloğu header'daki marka yazısıyla aynı hizada başlar */}
-          <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-24 pt-28 text-white sm:px-6 sm:pb-28 sm:pt-32">
-            <div className="max-w-2xl [text-shadow:0_2px_24px_rgba(0,0,0,0.45)]">
+          {/* Telefon: ortalı + alt. Masaüstü: solda, dikeyde alta yakın */}
+          <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-16 pt-28 text-center text-[#fff] sm:px-6 lg:pb-28 lg:text-left">
+            <div className="mx-auto max-w-2xl [text-shadow:0_2px_24px_rgba(0,0,0,0.45)] lg:mx-0">
               {hp.heroEyebrow && (
-                <p className="eyebrow mb-4 text-white/90">{hp.heroEyebrow}</p>
+                <p className="eyebrow mb-4 text-[#fff]/90">{hp.heroEyebrow}</p>
               )}
               <h1 className="font-display text-[2.65rem] leading-[1.06] sm:text-6xl lg:text-7xl">
                 {hp.heroTitle}{" "}
@@ -129,34 +128,26 @@ export function HomeClient({
                 {hp.heroTitleSuffix}
               </h1>
               {hp.heroSubtitle && (
-                <p className="mt-5 max-w-xl text-[0.95rem] leading-relaxed text-white/90 sm:text-lg">
+                <p className="mx-auto mt-5 max-w-xl text-[0.95rem] leading-relaxed text-[#fff]/90 sm:text-lg lg:mx-0">
                   {hp.heroSubtitle}
                 </p>
               )}
               <div className="mt-9">
                 <Link
                   href={hp.heroPrimaryUrl || "/urunler"}
-                  className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-white px-8 text-sm font-semibold tracking-wide text-primary shadow-[0_8px_28px_rgba(0,0,0,0.35)] transition-all hover:bg-[#f4e4c8] sm:w-auto"
+                  className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[#fff] px-8 text-sm font-semibold tracking-wide text-[#2a241c] shadow-[0_8px_28px_rgba(0,0,0,0.35)] transition-all hover:bg-[#f4e4c8] sm:w-auto"
                 >
                   {hp.heroPrimaryText}
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Link>
               </div>
               {hp.heroBadge && (
-                <p className="eyebrow mt-10 inline-block rounded-sm bg-black/40 px-3 py-1.5 text-white/95 backdrop-blur-sm">
+                <p className="eyebrow mt-8 inline-block rounded-sm bg-[#000]/40 px-3 py-1.5 text-[#fff]/95 backdrop-blur-sm lg:mt-10">
                   {hp.heroBadge}
                 </p>
               )}
             </div>
           </div>
-
-          {/* Tam ekran hero'da aşağıda içerik olduğunu belli eden ipucu */}
-          <span
-            aria-hidden
-            className="absolute bottom-7 left-1/2 z-10 -translate-x-1/2 animate-bounce text-white/70"
-          >
-            <ChevronDown className="h-6 w-6" />
-          </span>
         </section>
         <HomeSections hp={hp} featured={featured} categories={categories} />
       </>
