@@ -141,7 +141,7 @@ export function SiteFooter() {
 
         <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-primary-foreground/10 pt-8 text-xs text-primary-foreground/50 sm:flex-row">
           <p>© {new Date().getFullYear()}<a href="https://bilalorhanlar.com" target="_blank" rel="noopener noreferrer"> Bilal ORHANLAR</a> — Tüm hakları saklıdır.</p>
-          <p>Havale/EFT · Kapıda Ödeme · Kredi kartı çok yakında</p>
+          <p>Havale/EFT · Kredi kartı</p>
         </div>
       </div>
     </footer>

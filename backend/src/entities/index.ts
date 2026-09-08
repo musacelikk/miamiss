@@ -3,6 +3,7 @@ export * from './user.entity';
 export * from './address.entity';
 export * from './category.entity';
 export * from './product.entity';
+export * from './product-label.entity';
 export * from './product-image.entity';
 export * from './product-variant.entity';
 export * from './favorite.entity';

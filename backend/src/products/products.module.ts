@@ -4,6 +4,7 @@ import {
   Category,
   Product,
   ProductImage,
+  ProductLabel,
   ProductVariant,
   Review,
   StockAlert,
@@ -14,7 +15,7 @@ import { StockAlertsController } from './stock-alerts.controller';
 import { ProductsService } from './products.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Product, ProductImage, ProductVariant, Category, Review, StockAlert])],
+  imports: [TypeOrmModule.forFeature([Product, ProductImage, ProductVariant, ProductLabel, Category, Review, StockAlert])],
   controllers: [ProductsController, AdminProductsController, StockAlertsController],
   providers: [ProductsService],
   exports: [ProductsService],

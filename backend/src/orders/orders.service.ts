@@ -101,6 +101,9 @@ export class OrdersService {
     if (!hasProducts && !hasGiftCards) {
       throw new BadRequestException('Sepetiniz boş.');
     }
+    if (input.paymentMethod === PaymentMethod.COD) {
+      throw new BadRequestException('Kapıda ödeme artık kullanılmıyor.');
+    }
     if (input.paymentMethod === PaymentMethod.CARD && !paytrConfigured(this.configService)) {
       throw new BadRequestException('Kredi kartı ile ödeme şu anda kullanılamıyor.');
     }
@@ -223,9 +226,6 @@ export class OrdersService {
         ? Math.max(store.shippingFee, ...customFees)
         : store.shippingFee;
       shippingTotal = afterDiscount >= store.freeShippingThreshold ? 0 : round2(baseFee);
-    }
-    if (input.paymentMethod === PaymentMethod.COD) {
-      shippingTotal = round2(shippingTotal + store.codFee);
     }
 
     // Hediye karti ile odeme

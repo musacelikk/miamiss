@@ -62,9 +62,11 @@ export class ProductsService {
       .leftJoinAndSelect('p.images', 'img')
       .leftJoinAndSelect('p.variants', 'variant')
       .leftJoinAndSelect('p.category', 'cat')
+      .leftJoinAndSelect('p.labels', 'label')
       .where('p.id IN (:...ids)', { ids })
       .orderBy('img.sortOrder', 'ASC')
       .addOrderBy('variant.sortOrder', 'ASC')
+      .addOrderBy('label.sortOrder', 'ASC')
       .getMany();
     const byId = new Map(full.map((p) => [p.id, p]));
     return ids.map((id) => byId.get(id)).filter((p): p is Product => p != null);
@@ -94,7 +96,7 @@ export class ProductsService {
   async bySlug(slug: string, track = true) {
     const product = await this.products.findOne({
       where: { slug, isActive: true },
-      relations: { images: true, category: true, variants: true },
+      relations: { images: true, category: true, variants: true, labels: true },
       order: { images: { sortOrder: 'ASC' }, variants: { sortOrder: 'ASC' } },
     });
     if (!product) throw new NotFoundException('Ürün bulunamadı.');
@@ -111,7 +113,7 @@ export class ProductsService {
     const [withRating] = await this.attachRatings([product]);
     const related = await this.products.find({
       where: { categoryId: product.categoryId ?? undefined, isActive: true },
-      relations: { images: true, category: true },
+      relations: { images: true, category: true, labels: true },
       take: 5,
     });
     // Yorumlari iki seviyeli agaca cevir: ust yorumlar (yeniden eskiye) + yanitlari (eskiden yeniye)

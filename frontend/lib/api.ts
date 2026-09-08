@@ -88,6 +88,15 @@ export interface Category {
   showOnHomepage?: boolean
 }
 
+export type ProductLabelTone = "DARK" | "ACCENT" | "MUTED" | "WARM"
+
+export interface ProductLabel {
+  id: string
+  name: string
+  tone: ProductLabelTone
+  sortOrder: number
+}
+
 export interface ProductVariant {
   id: string
   name: string
@@ -242,6 +251,7 @@ export interface Product {
   category?: Category | null
   images: ProductImage[]
   variants?: ProductVariant[]
+  labels?: ProductLabel[]
   avgRating?: number | null
   reviewCount?: number
   createdAt: string

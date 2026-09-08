@@ -167,16 +167,6 @@ export default function AdminSettingsPage() {
                   className={input}
                 />
               </div>
-              <div>
-                <label className={label}>Kapıda Ödeme (TL)</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={settings.codFee}
-                  onChange={set("codFee")}
-                  className={input}
-                />
-              </div>
             </div>
           </section>
 

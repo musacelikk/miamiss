@@ -62,7 +62,7 @@ export default function DistanceSalesPage() {
         <li>Kredi veya banka kartı ile ödeme,</li>
         <li>Dijital Cüzdan (PayTR ile Öde) ile ödeme,</li>
         <li>Hediye Kartı ile ödeme,</li>
-        <li>Havale / EFT / Kapıda ödeme.</li>
+        <li>Havale / EFT.</li>
       </ul>
 
       <h2>4. Cayma Hakkı</h2>

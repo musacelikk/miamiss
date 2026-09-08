@@ -12,14 +12,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 import {
   IsArray,
   ValidateNested,
   IsBoolean,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
@@ -28,6 +30,8 @@ import {
   Category,
   Product,
   ProductImage,
+  ProductLabel,
+  ProductLabelTone,
   ProductVariant,
   Review,
   Role,
@@ -189,12 +193,28 @@ class ProductDto {
   @IsArray()
   imageUrls?: string[];
 
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  labelIds?: string[];
+
   /** Bos/verilmemis ise urun varyantsiz (tek fiyat + tek stok) satilir */
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => VariantDto)
   variants?: VariantDto[];
+}
+
+class LabelDto {
+  @IsString()
+  @MinLength(2, { message: 'Etiket en az 2 karakter olmalı.' })
+  @MaxLength(32, { message: 'Etiket en fazla 32 karakter olabilir.' })
+  name: string;
+
+  @IsOptional()
+  @IsIn(Object.values(ProductLabelTone))
+  tone?: ProductLabelTone;
 }
 
 class CategoryDto {
@@ -228,6 +248,7 @@ export class AdminProductsController {
     @InjectRepository(Review) private readonly reviews: Repository<Review>,
     @InjectRepository(ProductVariant) private readonly variants: Repository<ProductVariant>,
     @InjectRepository(StockAlert) private readonly stockAlerts: Repository<StockAlert>,
+    @InjectRepository(ProductLabel) private readonly labels: Repository<ProductLabel>,
     private readonly mail: MailService,
     private readonly logs: LogsService,
   ) {}
@@ -347,6 +368,25 @@ export class AdminProductsController {
     });
   }
 
+  /** Urunun vitrin etiketlerini bastan yazar. undefined ise dokunmaz. */
+  private async syncLabels(product: Product, labelIds?: string[]) {
+    if (!labelIds) return;
+    const unique = [...new Set(labelIds.filter(Boolean))];
+    product.labels = unique.length
+      ? await this.labels.find({ where: { id: In(unique) } })
+      : [];
+    await this.products.save(product);
+  }
+
+  private async assertLabelNameFree(name: string, exceptId?: string) {
+    const clash = await this.labels.findOne({
+      where: exceptId ? { name, id: Not(exceptId) } : { name },
+    });
+    if (clash) {
+      throw new BadRequestException(`"${name}" adında bir etiket zaten var.`);
+    }
+  }
+
   @Get('products')
   list(@Query('search') search?: string, @Query('page') page?: string) {
     return this.service.list({
@@ -360,7 +400,7 @@ export class AdminProductsController {
   @Post('products')
   async create(@Body() dto: ProductDto, @CurrentUser() admin: AuthUser) {
     this.logAdmin(admin!, 'product.create', `Ürün eklendi: ${dto.name}`);
-    const { imageUrls, variants, sku, ...data } = dto;
+    const { imageUrls, variants, sku, labelIds, ...data } = dto;
     let slug = slugify(data.name);
     const clash = await this.products.findOne({ where: { slug } });
     if (clash) slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
@@ -387,9 +427,10 @@ export class AdminProductsController {
       );
     }
     await this.syncVariants(product.id, variants);
+    await this.syncLabels(product, labelIds);
     return this.products.findOne({
       where: { id: product.id },
-      relations: { images: true, variants: true },
+      relations: { images: true, variants: true, labels: true },
     });
   }
 
@@ -426,7 +467,7 @@ export class AdminProductsController {
     this.logAdmin(admin!, 'product.update', `Ürün güncellendi: ${product.name}`);
 
     const wasOutOfStock = product.stock <= 0;
-    const { imageUrls, variants, sku, ...data } = dto;
+    const { imageUrls, variants, sku, labelIds, ...data } = dto;
     const { productSku, variantSkus } = await this.resolveSkus(id, data.name, sku, variants);
     const derived = this.deriveFromVariants(data, variants);
     variants?.forEach((v, i) => (v.sku = variantSkus[i]));
@@ -461,9 +502,10 @@ export class AdminProductsController {
       }
     }
     await this.syncVariants(id, variants);
+    await this.syncLabels(product, labelIds);
     return this.products.findOne({
       where: { id },
-      relations: { images: true, variants: true },
+      relations: { images: true, variants: true, labels: true },
     });
   }
 
@@ -473,6 +515,61 @@ export class AdminProductsController {
     const result = await this.products.delete({ id });
     if (!result.affected) throw new NotFoundException('Ürün bulunamadı.');
     this.logAdmin(admin!, 'product.delete', `Ürün silindi: ${product?.name ?? id}`);
+    return { ok: true };
+  }
+
+  /* ================= Vitrin etiketleri ================= */
+
+  @Get('product-labels')
+  async listLabels() {
+    const items = await this.labels.find({ order: { sortOrder: 'ASC', name: 'ASC' } });
+    if (items.length) return items;
+    // Ilk acilista kullanima hazir ornekler; admin isterse siler/duzenler
+    return this.labels.save([
+      this.labels.create({ name: 'Sınırlı Sayıda', tone: ProductLabelTone.DARK, sortOrder: 0 }),
+      this.labels.create({ name: 'Stok Tükeniyor', tone: ProductLabelTone.ACCENT, sortOrder: 1 }),
+      this.labels.create({ name: 'Yeni', tone: ProductLabelTone.WARM, sortOrder: 2 }),
+      this.labels.create({ name: 'El İşçiliği', tone: ProductLabelTone.MUTED, sortOrder: 3 }),
+    ]);
+  }
+
+  @Post('product-labels')
+  async createLabel(@Body() dto: LabelDto, @CurrentUser() admin: AuthUser) {
+    const name = dto.name.trim();
+    await this.assertLabelNameFree(name);
+    this.logAdmin(admin!, 'product.label.create', `Etiket eklendi: ${name}`);
+    const count = await this.labels.count();
+    return this.labels.save(
+      this.labels.create({
+        name,
+        tone: dto.tone ?? ProductLabelTone.DARK,
+        sortOrder: count,
+      }),
+    );
+  }
+
+  @Patch('product-labels/:id')
+  async updateLabel(
+    @Param('id') id: string,
+    @Body() dto: LabelDto,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    const label = await this.labels.findOne({ where: { id } });
+    if (!label) throw new NotFoundException('Etiket bulunamadı.');
+    const name = dto.name.trim();
+    await this.assertLabelNameFree(name, id);
+    label.name = name;
+    if (dto.tone) label.tone = dto.tone;
+    this.logAdmin(admin!, 'product.label.update', `Etiket güncellendi: ${name}`);
+    return this.labels.save(label);
+  }
+
+  @Delete('product-labels/:id')
+  async removeLabel(@Param('id') id: string, @CurrentUser() admin: AuthUser) {
+    const label = await this.labels.findOne({ where: { id } });
+    const result = await this.labels.delete({ id });
+    if (!result.affected) throw new NotFoundException('Etiket bulunamadı.');
+    this.logAdmin(admin!, 'product.label.delete', `Etiket silindi: ${label?.name ?? id}`);
     return { ok: true };
   }
 

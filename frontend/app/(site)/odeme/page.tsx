@@ -4,7 +4,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  Banknote,
   CreditCard,
   Gift,
   Landmark,
@@ -27,7 +26,7 @@ import {
 } from "@/lib/input"
 import { cn } from "@/lib/utils"
 
-type PayMethod = "BANK_TRANSFER" | "COD" | "CARD"
+type PayMethod = "BANK_TRANSFER" | "CARD"
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -127,7 +126,6 @@ export default function CheckoutPage() {
     if (hasProducts) {
       fee = afterDiscount >= settings.freeShippingThreshold ? 0 : settings.shippingFee
     }
-    if (payMethod === "COD") fee += settings.codFee
     return Math.round(fee * 100) / 100
   }, [settings, hasProducts, afterDiscount, payMethod])
 
@@ -553,33 +551,6 @@ export default function CheckoutPage() {
                   </p>
                 </div>
               </label>
-
-              {hasProducts && (
-                <label
-                  className={cn(
-                    "order-3 flex cursor-pointer items-start gap-4 rounded-md border p-4 transition-colors",
-                    payMethod === "COD"
-                      ? "border-accent bg-secondary/50"
-                      : "border-border hover:border-accent/50",
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="pay"
-                    checked={payMethod === "COD"}
-                    onChange={() => choosePayMethod("COD")}
-                    className="mt-1 accent-[oklch(0.63_0.065_75)]"
-                  />
-                  <Banknote className="mt-0.5 h-5 w-5 text-accent" />
-                  <div>
-                    <p className="text-sm font-semibold">Kapıda Ödeme</p>
-                    <p className="text-xs text-muted-foreground">
-                      Teslimatta nakit veya kartla ödeyin
-                      {settings ? ` (+${formatPrice(settings.codFee)} hizmet bedeli)` : ""}.
-                    </p>
-                  </div>
-                </label>
-              )}
 
               {cardEnabled ? (
                 <label

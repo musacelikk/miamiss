@@ -19,11 +19,14 @@ import {
   imageUrl,
   type Category,
   type Product,
+  type ProductLabel,
+  type ProductLabelTone,
   type StoreSettings,
 } from "@/lib/api"
 import { formatPrice, parseDecimal } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { ImagePicker } from "@/components/admin/image-picker"
+import { labelToneClass } from "@/components/site/product-badges"
 
 const EMPTY = {
   name: "",
@@ -48,6 +51,7 @@ const EMPTY = {
   isFeatured: false,
   categoryId: "",
   imageUrls: [] as string[],
+  labelIds: [] as string[],
   variants: [] as {
     name: string
     price: string
@@ -58,11 +62,19 @@ const EMPTY = {
   }[],
 }
 
+const TONES: { id: ProductLabelTone; name: string }[] = [
+  { id: "DARK", name: "Koyu" },
+  { id: "ACCENT", name: "Vurgu" },
+  { id: "WARM", name: "Sıcak" },
+  { id: "MUTED", name: "Açık" },
+]
+
 type FormState = typeof EMPTY & { id?: string }
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[] | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
+  const [labels, setLabels] = useState<ProductLabel[]>([])
   const [settings, setSettings] = useState<StoreSettings | null>(null)
   const [search, setSearch] = useState("")
   const [form, setForm] = useState<FormState | null>(null)
@@ -70,6 +82,12 @@ export default function AdminProductsPage() {
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const [newCategory, setNewCategory] = useState("")
+  const [newLabel, setNewLabel] = useState({ name: "", tone: "DARK" as ProductLabelTone })
+  const [editingLabel, setEditingLabel] = useState<{
+    id: string
+    name: string
+    tone: ProductLabelTone
+  } | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
   const [sortBy, setSortBy] = useState<"name" | "price" | "stock" | "isActive" | "viewCount" | null>(null)
@@ -162,6 +180,7 @@ export default function AdminProductsPage() {
       .then((res) => setProducts(res.items))
       .catch((e) => toast.error(e.message))
     api<Category[]>("/categories", { auth: false }).then(setCategories).catch(() => {})
+    api<ProductLabel[]>("/admin/product-labels").then(setLabels).catch(() => {})
     api<StoreSettings>("/settings", { auth: false }).then(setSettings).catch(() => {})
   }, [search])
 
@@ -197,6 +216,7 @@ export default function AdminProductsPage() {
       imageUrls: [...(p.images ?? [])]
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .map((i) => i.url),
+      labelIds: (p.labels ?? []).map((l) => l.id),
       variants: [...(p.variants ?? [])]
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .map((v) => ({
@@ -285,6 +305,7 @@ export default function AdminProductsPage() {
         isFeatured: form.isFeatured,
         categoryId: form.categoryId || undefined,
         imageUrls: form.imageUrls,
+        labelIds: form.labelIds,
         variants: variantPayload,
       }
       if (form.id) {
@@ -329,6 +350,59 @@ export default function AdminProductsPage() {
     }
   }
 
+  const saveLabel = async () => {
+    const name = newLabel.name.trim()
+    if (name.length < 2) {
+      toast.error("Etiket en az 2 karakter olmalı")
+      return
+    }
+    try {
+      await api("/admin/product-labels", {
+        method: "POST",
+        body: JSON.stringify({ name, tone: newLabel.tone }),
+      })
+      setNewLabel({ name: "", tone: "DARK" })
+      load()
+      toast.success("Etiket eklendi")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Eklenemedi")
+    }
+  }
+
+  const updateLabel = async () => {
+    if (!editingLabel) return
+    const name = editingLabel.name.trim()
+    if (name.length < 2) {
+      toast.error("Etiket en az 2 karakter olmalı")
+      return
+    }
+    try {
+      await api(`/admin/product-labels/${editingLabel.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name, tone: editingLabel.tone }),
+      })
+      setEditingLabel(null)
+      load()
+      toast.success("Etiket güncellendi")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Kaydedilemedi")
+    }
+  }
+
+  const removeLabel = async (label: ProductLabel) => {
+    if (!confirm(`"${label.name}" etiketi silinsin mi? Ürünlerden de kalkar.`)) return
+    try {
+      await api(`/admin/product-labels/${label.id}`, { method: "DELETE" })
+      setForm((f) =>
+        f ? { ...f, labelIds: f.labelIds.filter((id) => id !== label.id) } : f,
+      )
+      load()
+      toast.success("Etiket silindi")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Silinemedi")
+    }
+  }
+
   const input =
     "w-full rounded-md border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-accent"
   const formHasVariants = !!form && form.variants.some((v) => v.name.trim())
@@ -352,6 +426,135 @@ export default function AdminProductsPage() {
           <Plus className="h-4 w-4" /> Yeni Ürün
         </button>
       </div>
+
+      {/* Vitrin etiketleri — ürün kartının sol üstünde Tükendi gibi görünür */}
+      <section className="rounded-md border border-border bg-card p-4 sm:p-5">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="font-display text-lg">Vitrin etiketleri</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Ürün görselinin sol üstünde Tükendi rozetiyle aynı stilde çıkar. Tükendi stok bitince,
+              indirim rozeti de fiyattan otomatik gelir.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {labels.map((label) =>
+            editingLabel?.id === label.id ? (
+              <form
+                key={label.id}
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void updateLabel()
+                }}
+                className="flex flex-wrap items-center gap-1.5 rounded-md border border-accent bg-background p-1.5"
+              >
+                <input
+                  autoFocus
+                  value={editingLabel.name}
+                  onChange={(e) => setEditingLabel({ ...editingLabel, name: e.target.value })}
+                  className="h-8 w-36 rounded border border-border bg-background px-2 text-xs outline-none focus:border-accent"
+                />
+                <div className="flex gap-1">
+                  {TONES.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      title={t.name}
+                      onClick={() => setEditingLabel({ ...editingLabel, tone: t.id })}
+                      className={cn(
+                        "h-7 rounded-sm px-2 text-[10px] font-bold uppercase tracking-wider",
+                        labelToneClass(t.id),
+                        editingLabel.tone === t.id && "ring-2 ring-foreground/40",
+                      )}
+                    >
+                      Aa
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="submit"
+                  className="h-8 rounded-md bg-primary px-3 text-[11px] font-semibold text-primary-foreground"
+                >
+                  Kaydet
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingLabel(null)}
+                  className="h-8 px-2 text-[11px] text-muted-foreground"
+                >
+                  Vazgeç
+                </button>
+              </form>
+            ) : (
+              <span
+                key={label.id}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-sm py-1 pl-2.5 pr-1 text-[11px] font-bold uppercase tracking-wider",
+                  labelToneClass(label.tone),
+                )}
+              >
+                {label.name}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditingLabel({ id: label.id, name: label.name, tone: label.tone })
+                  }
+                  className="rounded p-1 opacity-70 hover:opacity-100"
+                  aria-label="Düzenle"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void removeLabel(label)}
+                  className="rounded p-1 opacity-70 hover:opacity-100"
+                  aria-label="Sil"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ),
+          )}
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            void saveLabel()
+          }}
+          className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4"
+        >
+          <input
+            value={newLabel.name}
+            onChange={(e) => setNewLabel({ ...newLabel, name: e.target.value })}
+            placeholder="Yeni etiket — örn. Sınırlı Sayıda"
+            className="h-9 min-w-[200px] flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-accent"
+          />
+          <div className="flex gap-1">
+            {TONES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                title={t.name}
+                onClick={() => setNewLabel({ ...newLabel, tone: t.id })}
+                className={cn(
+                  "h-9 rounded-sm px-2.5 text-[10px] font-bold uppercase tracking-wider",
+                  labelToneClass(t.id),
+                  newLabel.tone === t.id && "ring-2 ring-foreground/40",
+                )}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+          <button
+            type="submit"
+            className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-accent"
+          >
+            <Plus className="h-3.5 w-3.5" /> Ekle
+          </button>
+        </form>
+      </section>
 
       {/* Form modal */}
       {form && (
@@ -482,6 +685,44 @@ export default function AdminProductsPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-semibold">Vitrin etiketleri</label>
+                <p className="mb-2 text-[11px] text-muted-foreground">
+                  Kartın sol üstünde görünür. Tükendi ve indirim otomatik eklenir.
+                </p>
+                {labels.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Önce sayfanın üstünden bir etiket oluşturun.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {labels.map((label) => {
+                      const on = form.labelIds.includes(label.id)
+                      return (
+                        <button
+                          key={label.id}
+                          type="button"
+                          onClick={() =>
+                            setForm({
+                              ...form,
+                              labelIds: on
+                                ? form.labelIds.filter((id) => id !== label.id)
+                                : [...form.labelIds, label.id],
+                            })
+                          }
+                          className={cn(
+                            "rounded-sm px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-opacity",
+                            labelToneClass(label.tone),
+                            on ? "ring-2 ring-foreground/30" : "opacity-40 hover:opacity-80",
+                          )}
+                        >
+                          {label.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold">Malzeme</label>
@@ -996,6 +1237,21 @@ export default function AdminProductsPage() {
                             </span>
                           )}
                         </p>
+                        {(p.labels?.length ?? 0) > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {p.labels!.map((l) => (
+                              <span
+                                key={l.id}
+                                className={cn(
+                                  "rounded-sm px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider",
+                                  labelToneClass(l.tone),
+                                )}
+                              >
+                                {l.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>

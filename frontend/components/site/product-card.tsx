@@ -8,6 +8,7 @@ import { useCart, useFavorites } from "@/components/providers"
 import { imageUrl, productDisplay, type Product } from "@/lib/api"
 import { formatPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { ProductBadges } from "@/components/site/product-badges"
 
 export function ProductCard({ product }: { product: Product }) {
   const { addProduct } = useCart()
@@ -53,19 +54,8 @@ export function ProductCard({ product }: { product: Product }) {
           />
         )}
 
-        {/* Rozetler */}
-        <div className="absolute left-3 top-3 flex flex-col gap-1.5">
-          {compareAtPrice && compareAtPrice > minPrice && (
-            <span className="rounded-sm bg-accent px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-accent-foreground">
-              %{Math.round((1 - minPrice / compareAtPrice) * 100)} indirim
-            </span>
-          )}
-          {outOfStock && (
-            <span className="rounded-sm bg-foreground/80 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-background">
-              Tükendi
-            </span>
-          )}
-        </div>
+        {/* Rozetler: Tükendi stoktan, indirim fiyattan, diğerleri admin etiketi */}
+        <ProductBadges product={product} />
 
         {/* Favori */}
         <button

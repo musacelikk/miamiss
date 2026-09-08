@@ -2,6 +2,8 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -12,6 +14,7 @@ import { Category } from './category.entity';
 import { ProductImage } from './product-image.entity';
 import { ProductVariant } from './product-variant.entity';
 import { Review } from './review.entity';
+import { ProductLabel } from './product-label.entity';
 
 @Entity('products')
 export class Product {
@@ -115,6 +118,15 @@ export class Product {
 
   @OneToMany(() => Review, (r) => r.product)
   reviews: Review[];
+
+  /** Vitrin rozetleri (Tükendi ve indirim otomatik; bunlar adminin seçtikleri) */
+  @ManyToMany(() => ProductLabel, (l) => l.products)
+  @JoinTable({
+    name: 'product_label_assignments',
+    joinColumn: { name: 'productId' },
+    inverseJoinColumn: { name: 'labelId' },
+  })
+  labels: ProductLabel[];
 
   @CreateDateColumn()
   createdAt: Date;

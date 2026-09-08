@@ -28,6 +28,7 @@ import {
 import { formatDate, formatPrice } from "@/lib/format"
 import { useAuth, useCart, useFavorites } from "@/components/providers"
 import { ProductCard } from "@/components/site/product-card"
+import { ProductBadges } from "@/components/site/product-badges"
 import { RecentlyViewed, recordView } from "@/components/site/recently-viewed"
 import { cn } from "@/lib/utils"
 
@@ -270,11 +271,7 @@ export function ProductDetailClient({ slug }: { slug: string }) {
               priority
               className="object-cover"
             />
-            {compareAt && compareAt > price && (
-              <span className="absolute left-4 top-4 rounded-sm bg-accent px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-accent-foreground">
-                %{Math.round((1 - price / compareAt) * 100)} indirim
-              </span>
-            )}
+            <ProductBadges product={product} compact={false} className="left-4 top-4" />
           </div>
           {images.length > 1 && (
             <div className="mt-3 grid grid-cols-5 gap-3">

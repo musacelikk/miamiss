@@ -12,7 +12,6 @@ import {
   IsEmail,
   IsIn,
   Matches,
-  IsEnum,
   IsInt,
   IsNumber,
   IsOptional,
@@ -84,7 +83,7 @@ class CreateOrderDto {
   @IsString()
   giftCardCode?: string;
 
-  @IsEnum(PaymentMethod)
+  @IsIn([PaymentMethod.BANK_TRANSFER, PaymentMethod.CARD])
   paymentMethod: PaymentMethod;
 
   @IsString()

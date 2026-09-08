@@ -70,7 +70,7 @@ export default function PreInfoPage() {
         <li>Kredi veya banka kartı ile ödeme,</li>
         <li>Dijital Cüzdan (PayTR ile Öde) ile ödeme,</li>
         <li>Hediye Kartı ile ödeme,</li>
-        <li>Havale / EFT / Kapıda ödeme.</li>
+        <li>Havale / EFT.</li>
       </ul>
       <p>
         <strong>5.2.</strong> Sipariş ve/veya ödeme işleminizi tamamladıktan
