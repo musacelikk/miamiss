@@ -111,31 +111,42 @@ export function HomeClient({
             style={{ opacity: overlay }}
             aria-hidden
           />
+          {/* Metnin durduğu sol tarafı ekstra karart: açık kayada beyaz yazı, gölgede koyu buton kaybolmasın */}
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent"
+            aria-hidden
+          />
           {/* pt-*: saydam header'ın altında kalmaması için üstten pay.
               max-w-7xl + px: metin bloğu header'daki marka yazısıyla aynı hizada başlar */}
           <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-24 pt-28 text-white sm:px-6 sm:pb-28 sm:pt-32">
-            <div className="max-w-2xl">
-              {hp.heroEyebrow && <p className="eyebrow mb-4 text-white/80">{hp.heroEyebrow}</p>}
+            <div className="max-w-2xl [text-shadow:0_2px_24px_rgba(0,0,0,0.45)]">
+              {hp.heroEyebrow && (
+                <p className="eyebrow mb-4 text-white/90">{hp.heroEyebrow}</p>
+              )}
               <h1 className="font-display text-[2.65rem] leading-[1.06] sm:text-6xl lg:text-7xl">
                 {hp.heroTitle}{" "}
-                <span className="italic text-accent">{hp.heroTitleAccent}</span>
+                <span className="italic text-[#f4e4c8]">{hp.heroTitleAccent}</span>
                 {hp.heroTitleSuffix}
               </h1>
               {hp.heroSubtitle && (
-                <p className="mt-5 max-w-xl text-[0.95rem] leading-relaxed text-white/85 sm:text-lg">
+                <p className="mt-5 max-w-xl text-[0.95rem] leading-relaxed text-white/90 sm:text-lg">
                   {hp.heroSubtitle}
                 </p>
               )}
               <div className="mt-9">
                 <Link
                   href={hp.heroPrimaryUrl || "/urunler"}
-                  className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-8 text-sm font-semibold tracking-wide text-primary-foreground transition-all hover:bg-accent sm:w-auto"
+                  className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-white px-8 text-sm font-semibold tracking-wide text-primary shadow-[0_8px_28px_rgba(0,0,0,0.35)] transition-all hover:bg-[#f4e4c8] sm:w-auto"
                 >
                   {hp.heroPrimaryText}
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Link>
               </div>
-              {hp.heroBadge && <p className="eyebrow mt-10 text-accent">{hp.heroBadge}</p>}
+              {hp.heroBadge && (
+                <p className="eyebrow mt-10 inline-block rounded-sm bg-black/40 px-3 py-1.5 text-white/95 backdrop-blur-sm">
+                  {hp.heroBadge}
+                </p>
+              )}
             </div>
           </div>
 
