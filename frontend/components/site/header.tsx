@@ -146,7 +146,7 @@ export function SiteHeader({ heroOverlay = false }: { heroOverlay?: boolean }) {
             aria-label="Mia Misu Home anasayfa"
             className={cn("mr-auto transition-colors", iconClass)}
           >
-            <BrandWordmark className="text-[0.95rem] sm:text-xl" />
+            <BrandWordmark className="text-[1.2rem] sm:text-2xl" />
           </Link>
 
           {/* Masaüstü nav + ikonlar tek grup halinde sağda */}
@@ -250,7 +250,7 @@ export function SiteHeader({ heroOverlay = false }: { heroOverlay?: boolean }) {
           />
           <div className="absolute inset-y-0 left-0 flex w-[85%] max-w-xs flex-col bg-background shadow-2xl animate-in slide-in-from-left duration-300">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <BrandWordmark className="text-base" />
+              <BrandWordmark className="text-xl" />
               <button onClick={() => setMobileOpen(false)} aria-label="Menüyü kapat" className="p-1">
                 <X className="h-5 w-5" />
               </button>
