@@ -21,6 +21,8 @@ interface LastOrder {
   paymentMethod: "BANK_TRANSFER" | "COD" | "CARD"
   email: string
   bank: { bankName: string; ibanName: string; iban: string } | null
+  hasGiftCards?: boolean
+  digitalOnly?: boolean
 }
 
 function CopyButton({
@@ -104,7 +106,13 @@ export default function OrderSuccessPage() {
         <CheckCircle2 className="mx-auto h-16 w-16 text-green-600" strokeWidth={1.2} />
         <h1 className="mt-6 font-display text-4xl sm:text-5xl">Siparişiniz Başarılı! 🎉</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Teşekkürler — siparişinizi aldık ve hazırlamaya başlıyoruz.
+          {order?.digitalOnly
+            ? order.paymentMethod === "BANK_TRANSFER"
+              ? "Havale onaylandıktan sonra hediye kartı kodunuz e-posta ile gönderilir."
+              : "Ödeme onaylanınca hediye kartı kodunuz e-posta ile gönderilir."
+            : order?.hasGiftCards
+              ? "Teşekkürler — siparişinizi aldık. Hediye kartı kodu ödeme onayından sonra e-posta ile gelir."
+              : "Teşekkürler — siparişinizi aldık ve hazırlamaya başlıyoruz."}
         </p>
       </div>
 
@@ -153,6 +161,13 @@ export default function OrderSuccessPage() {
                 Toplam <strong className="text-foreground">{formatPrice(order.grandTotal)}</strong>{" "}
                 tutarını aşağıdaki hesaba gönderin. Açıklama kısmına mutlaka sipariş kodunuzu (
                 <strong className="font-mono">{order.orderNo}</strong>) yazın.
+                {order.hasGiftCards && (
+                  <>
+                    {" "}
+                    Hediye kartı kodunuz havale onaylandıktan sonra e-posta ile iletilir; onaydan
+                    önce kullanılamaz.
+                  </>
+                )}
               </p>
               {order.bank && (order.bank.iban || order.bank.bankName) ? (
                 <dl className="mt-4 space-y-2 text-sm">

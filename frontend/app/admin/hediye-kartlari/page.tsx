@@ -64,8 +64,8 @@ export default function AdminGiftCardsPage() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
-        Hediye kartları sipariş üzerinden satın alınır; sipariş ödemesi "Ödendi" yapılınca otomatik
-        aktifleşir. Gerekirse buradan manuel durum değiştirebilirsiniz.
+        Hediye kartları siparişle birlikte rezerv edilir ama kod ancak ödeme "Ödendi" olduktan sonra
+        üretilir. Havale siparişlerinde müşteri sizin onayınız olmadan kartı kullanamaz.
       </p>
 
       <div className="overflow-x-auto rounded-md border border-border bg-card">
@@ -96,7 +96,9 @@ export default function AdminGiftCardsPage() {
             ) : (
               cards.map((c) => (
                 <tr key={c.id} className="hover:bg-secondary/40">
-                  <td className="px-4 py-3 font-mono text-xs font-semibold">{c.code}</td>
+                  <td className="px-4 py-3 font-mono text-xs font-semibold">
+                    {c.code.startsWith("GIFT-") ? c.code : "—"}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="font-semibold">{formatPrice(c.balance)}</span>
                     <span className="text-xs text-muted-foreground">

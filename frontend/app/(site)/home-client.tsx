@@ -120,7 +120,9 @@ export function HomeClient({
           <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-16 pt-28 text-center text-[#fff] sm:px-6 lg:pb-28 lg:text-left">
             <div className="mx-auto max-w-2xl [text-shadow:0_2px_24px_rgba(0,0,0,0.45)] lg:mx-0">
               {hp.heroEyebrow && (
-                <p className="eyebrow mb-4 text-[#fff]/90">{hp.heroEyebrow}</p>
+                <p className="mb-4 text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-[#fff] [text-shadow:0_1px_12px_rgba(0,0,0,0.7)] sm:text-[0.85rem]">
+                  {hp.heroEyebrow}
+                </p>
               )}
               <h1 className="font-display text-[2.65rem] leading-[1.06] sm:text-6xl lg:text-7xl">
                 {hp.heroTitle}{" "}
@@ -141,11 +143,6 @@ export function HomeClient({
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Link>
               </div>
-              {hp.heroBadge && (
-                <p className="eyebrow mt-8 inline-block rounded-sm bg-[#000]/40 px-3 py-1.5 text-[#fff]/95 backdrop-blur-sm lg:mt-10">
-                  {hp.heroBadge}
-                </p>
-              )}
             </div>
           </div>
         </section>
@@ -160,7 +157,7 @@ export function HomeClient({
       <section className="relative overflow-hidden">
         {/* Mobil: tam genişlikte kaydırmalı galeri, metin altında */}
         <div className="lg:hidden">
-          <HeroGallery images={heroImages} badge={hp.heroBadge} />
+          <HeroGallery images={heroImages} />
           <div className="px-4 pb-12 pt-6 sm:px-6">
             <p className="eyebrow mb-3">{hp.heroEyebrow}</p>
             <h1 className="font-display text-[2.65rem] leading-[1.06] sm:text-5xl">
@@ -262,13 +259,6 @@ export function HomeClient({
                 </div>
               </div>
             </div>
-            {hp.heroBadge && (
-              <div className="absolute -left-6 top-1/2 flex h-28 w-28 -translate-y-1/2 items-center justify-center rounded-full border border-accent/40 bg-background/90 text-center backdrop-blur">
-                <p className="whitespace-pre-line font-display text-sm italic leading-tight text-accent">
-                  {hp.heroBadge.split(" ").join("\n")}
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </section>

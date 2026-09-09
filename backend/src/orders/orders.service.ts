@@ -384,15 +384,16 @@ export class OrdersService {
       relations: { items: { product: { category: true }, boughtGiftCard: true } },
     });
     if (!order) throw new NotFoundException('Sipariş bulunamadı. Bilgileri kontrol edin.');
-    return order;
+    return this.giftCards.hideUnissuedCodes(order);
   }
 
   async listForUser(userId: string): Promise<Order[]> {
-    return this.orders.find({
+    const orders = await this.orders.find({
       where: { userId },
       relations: { items: { product: { category: true }, boughtGiftCard: true } },
       order: { createdAt: 'DESC' },
     });
+    return orders.map((o) => this.giftCards.hideUnissuedCodes(o));
   }
 
   async setPaymentStatus(orderId: string, status: PaymentStatus) {
@@ -421,11 +422,8 @@ export class OrdersService {
       const activatedCards: GiftCard[] = [];
       for (const item of order.items) {
         if (item.itemType === OrderItemType.GIFT_CARD && item.boughtGiftCardId) {
-          await this.giftCards.activate(item.boughtGiftCardId);
-          const card = await this.giftCardRepo.findOne({
-            where: { id: item.boughtGiftCardId },
-          });
-          if (card) activatedCards.push(card);
+          const card = await this.giftCards.activate(item.boughtGiftCardId);
+          if (card.status === GiftCardStatus.ACTIVE) activatedCards.push(card);
         }
       }
       this.mail.paymentConfirmed(

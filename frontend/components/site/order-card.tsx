@@ -5,6 +5,8 @@ import { useEffect, useState } from "react"
 import {
   ArrowRight,
   Check,
+  Copy,
+  Gift,
   Headset,
   ImagePlus,
   Loader2,
@@ -17,7 +19,9 @@ import { toast } from "sonner"
 import {
   api,
   imageUrl,
+  isIssuedGiftCard,
   ORDER_STATUS_TR,
+  orderIsDigitalOnly,
   PAYMENT_METHOD_TR,
   PAYMENT_STATUS_TR,
   type Order,
@@ -193,6 +197,7 @@ export function OrderCard({
     !!cancelEmail &&
     !cancelled &&
     (order.status === "PENDING" || order.status === "CONFIRMED")
+  const digitalOnly = orderIsDigitalOnly(order)
   const delivered = order.status === "DELIVERED"
   const activeReturn = returns.find((r) => r.status === "PENDING" || r.status === "APPROVED")
 
@@ -308,13 +313,32 @@ export function OrderCard({
       </div>
 
       <div className="py-5">
-        <OrderStatusTimeline
-          status={cancelled ? "CANCELLED" : order.status}
-          history={order.statusHistory}
-        />
+        {digitalOnly && !cancelled ? (
+          <div className="rounded-md bg-secondary/70 p-3 text-sm leading-relaxed">
+            {order.paymentStatus === "PAID" ? (
+              <p>
+                Ödemeniz onaylandı. Hediye kartı kodunuz e-posta ile gönderildi
+                {order.items.some((i) => isIssuedGiftCard(i.boughtGiftCard))
+                  ? "; aşağıda da görünür."
+                  : "."}
+              </p>
+            ) : (
+              <p>
+                Ödeme onayını bekliyoruz
+                {order.paymentMethod === "BANK_TRANSFER" ? " (havale / EFT)" : ""}. Hediye kartı
+                kodu onaydan sonra e-posta ile gelir; bu ekranda şimdilik görünmez.
+              </p>
+            )}
+          </div>
+        ) : (
+          <OrderStatusTimeline
+            status={cancelled ? "CANCELLED" : order.status}
+            history={order.statusHistory}
+          />
+        )}
       </div>
 
-      {order.trackingNo && (
+      {order.trackingNo && !digitalOnly && (
         <p className="mb-4 rounded-md bg-secondary/70 p-3 text-xs">
           <strong>Kargo:</strong> {order.cargoCompany ?? "—"} · Takip No:{" "}
           <span className="font-mono font-semibold">{order.trackingNo}</span>
@@ -339,7 +363,11 @@ export function OrderCard({
             />
           ) : (
             <div className="flex h-12 w-12 items-center justify-center rounded-md bg-secondary">
-              <Package className="h-5 w-5 text-muted-foreground" />
+              {item.itemType === "GIFT_CARD" ? (
+                <Gift className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <Package className="h-5 w-5 text-muted-foreground" />
+              )}
             </div>
           )
 
@@ -387,11 +415,26 @@ export function OrderCard({
                 <p className="text-xs text-muted-foreground">
                   {item.quantity} adet × {formatPrice(item.unitPrice)}
                 </p>
-                {item.boughtGiftCard?.code && item.boughtGiftCard.status !== "PENDING" && (
-                  <p className="mt-0.5 font-mono text-xs font-semibold text-accent">
-                    {item.boughtGiftCard.code}
-                  </p>
+                {isIssuedGiftCard(item.boughtGiftCard) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(item.boughtGiftCard!.code)
+                      toast.success("Hediye kartı kodu kopyalandı")
+                    }}
+                    className="mt-1 inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-accent hover:underline"
+                  >
+                    {item.boughtGiftCard!.code}
+                    <Copy className="h-3 w-3" />
+                  </button>
                 )}
+                {item.itemType === "GIFT_CARD" &&
+                  order.status !== "CANCELLED" &&
+                  !isIssuedGiftCard(item.boughtGiftCard) && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Kod, ödemeniz onaylandıktan sonra e-posta ile gönderilir.
+                    </p>
+                  )}
               </div>
               <p className="shrink-0 font-semibold">
                 {formatPrice(item.unitPrice * item.quantity)}
@@ -486,7 +529,7 @@ export function OrderCard({
           )
         )}
 
-        {delivered && cancelEmail && !activeReturn && (
+        {delivered && cancelEmail && !activeReturn && !digitalOnly && (
           <button
             onClick={() => setShowReturn(true)}
             className="flex flex-1 items-center justify-center gap-2 rounded-md border border-border py-2.5 text-xs font-semibold transition-colors hover:border-accent hover:text-accent sm:flex-none sm:px-5"

@@ -104,8 +104,8 @@ describe('ShippingService', () => {
     ]);
   });
 
-  it('hediye karti kalemleri etikete girmez, urun yoksa siparis no yazilir', async () => {
-    const { svc, geliver } = makeService({
+  it('yalnizca hediye karti olan siparise kargo olusturulmaz', async () => {
+    const { svc, geliver, orders } = makeService({
       order: {
         items: [
           { itemType: OrderItemType.GIFT_CARD, name: 'Hediye Kartı', variantName: null, quantity: 1 },
@@ -113,8 +113,36 @@ describe('ShippingService', () => {
       },
     });
     await svc.autoCreateForOrder('o1');
+    expect(geliver.createDraftWithOffers).not.toHaveBeenCalled();
+    expect(orders.update).not.toHaveBeenCalled();
+  });
+
+  it('hediye karti siparisi icin admin kargo olusturmayi reddeder', async () => {
+    const { svc, geliver } = makeService({
+      order: {
+        items: [
+          { itemType: OrderItemType.GIFT_CARD, name: 'Hediye Kartı', variantName: null, quantity: 1 },
+        ],
+      },
+    });
+    await expect(svc.createForOrder('o1')).rejects.toThrow('Hediye kartı');
+    await expect(svc.offersForOrder('o1')).rejects.toThrow('Hediye kartı');
+    expect(geliver.createDraftWithOffers).not.toHaveBeenCalled();
+  });
+
+  it('urun + hediye karti karisiksa yalnizca urunler kargoya girer', async () => {
+    const { svc, geliver } = makeService({
+      order: {
+        items: [
+          { itemType: OrderItemType.PRODUCT, name: 'Traverten Mumluk', variantName: null, quantity: 1 },
+          { itemType: OrderItemType.GIFT_CARD, name: 'Hediye Kartı', variantName: null, quantity: 1 },
+        ],
+      },
+    });
+    await svc.autoCreateForOrder('o1');
+    expect(geliver.createDraftWithOffers).toHaveBeenCalled();
     expect(geliver.createDraftWithOffers.mock.calls[0][0].items).toEqual([
-      { title: 'Sipariş MIA-1', quantity: 1 },
+      { title: 'Traverten Mumluk', quantity: 1 },
     ]);
   });
 

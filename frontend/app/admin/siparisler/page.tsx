@@ -2,15 +2,19 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { ChevronDown, Download, Loader2, Trash2 } from "lucide-react"
+import { ChevronDown, Download, Gift, Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import {
   api,
   imageUrl,
+  isIssuedGiftCard,
   ORDER_STATUS_TR,
+  orderHasGiftCards,
+  orderIsDigitalOnly,
   PAYMENT_METHOD_TR,
   PAYMENT_STATUS_TR,
   type Order,
+  type OrderItem,
 } from "@/lib/api"
 import { formatDateTime, formatPrice } from "@/lib/format"
 import { ShippingPanel } from "@/components/admin/shipping-panel"
@@ -19,6 +23,31 @@ import { cn } from "@/lib/utils"
 
 const STATUSES = Object.keys(ORDER_STATUS_TR) as Order["status"][]
 const PAY_STATUSES = Object.keys(PAYMENT_STATUS_TR) as Order["paymentStatus"][]
+
+function GiftCardLine({ item }: { item: OrderItem }) {
+  const gc = item.boughtGiftCard
+  const issued = isIssuedGiftCard(gc)
+  return (
+    <div className="min-w-0 flex-1">
+      <p>
+        {item.name}
+        <span className="text-muted-foreground"> × {item.quantity}</span>
+      </p>
+      {(gc?.recipientName || gc?.recipientEmail) && (
+        <p className="text-xs text-muted-foreground">
+          Alıcı: {[gc.recipientName, gc.recipientEmail].filter(Boolean).join(" · ")}
+        </p>
+      )}
+      {issued ? (
+        <p className="mt-0.5 font-mono text-xs font-semibold text-accent">{gc!.code}</p>
+      ) : (
+        <p className="mt-0.5 text-xs font-medium text-amber-800">
+          Kod yok — ödeme “Ödendi” yapılınca üretilir
+        </p>
+      )}
+    </div>
+  )
+}
 
 function OrderRow({
   order,
@@ -48,6 +77,13 @@ function OrderRow({
       setBusy(false)
     }
   }
+
+  const digitalOnly = orderIsDigitalOnly(order)
+  const hasGiftCards = orderHasGiftCards(order)
+  const unpaidGiftCards =
+    hasGiftCards &&
+    order.paymentStatus !== "PAID" &&
+    order.items.some((i) => i.itemType === "GIFT_CARD" && !isIssuedGiftCard(i.boughtGiftCard))
 
   return (
     <div
@@ -80,6 +116,11 @@ function OrderRow({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {orderHasGiftCards(order) && (
+            <span className="hidden items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground sm:inline-flex">
+              <Gift className="h-3 w-3" /> Hediye kartı
+            </span>
+          )}
           <span className="hidden text-xs text-muted-foreground sm:block">
             {PAYMENT_METHOD_TR[order.paymentMethod]}
           </span>
@@ -115,21 +156,20 @@ function OrderRow({
                       <img src={imageUrl(item.imageUrl)} alt="" className="h-10 w-10 rounded object-cover" />
                     ) : (
                       <div className="flex h-10 w-10 items-center justify-center rounded bg-secondary text-xs">
-                        🎁
+                        {item.itemType === "GIFT_CARD" ? "🎁" : ""}
                       </div>
                     )}
-                    <span className="flex-1">
-                      {item.name}
-                      {item.variantName && (
-                        <span className="text-accent"> ({item.variantName})</span>
-                      )}{" "}
-                      <span className="text-muted-foreground">× {item.quantity}</span>
-                      {item.boughtGiftCard?.code && (
-                        <span className="ml-2 font-mono text-xs text-accent">
-                          {item.boughtGiftCard.code}
-                        </span>
-                      )}
-                    </span>
+                    {item.itemType === "GIFT_CARD" ? (
+                      <GiftCardLine item={item} />
+                    ) : (
+                      <span className="flex-1">
+                        {item.name}
+                        {item.variantName && (
+                          <span className="text-accent"> ({item.variantName})</span>
+                        )}{" "}
+                        <span className="text-muted-foreground">× {item.quantity}</span>
+                      </span>
+                    )}
                     <span className="font-semibold">
                       {formatPrice(item.unitPrice * item.quantity)}
                     </span>
@@ -154,10 +194,12 @@ function OrderRow({
                     <dd>-{formatPrice(order.giftCardTotal)}</dd>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <dt>Kargo</dt>
-                  <dd>{formatPrice(order.shippingTotal)}</dd>
-                </div>
+                {(!digitalOnly || order.shippingTotal > 0) && (
+                  <div className="flex justify-between">
+                    <dt>Kargo</dt>
+                    <dd>{formatPrice(order.shippingTotal)}</dd>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm font-bold text-foreground">
                   <dt>Toplam</dt>
                   <dd>{formatPrice(order.grandTotal)}</dd>
@@ -165,14 +207,29 @@ function OrderRow({
               </dl>
 
               <div className="mt-4 rounded-md bg-secondary/50 p-3 text-xs leading-relaxed">
-                <p className="font-semibold">Teslimat Adresi</p>
+                <p className="font-semibold">{digitalOnly ? "İletişim" : "Teslimat Adresi"}</p>
                 <p className="mt-1 text-muted-foreground">
                   {order.shippingName} · {order.shippingPhone}
-                  <br />
-                  {order.shippingAddress}
-                  <br />
-                  {order.shippingDistrict} / {order.shippingCity} {order.shippingZip ?? ""}
+                  {!digitalOnly && (
+                    <>
+                      <br />
+                      {order.shippingAddress}
+                      <br />
+                      {order.shippingDistrict} / {order.shippingCity} {order.shippingZip ?? ""}
+                    </>
+                  )}
+                  {digitalOnly && (
+                    <>
+                      <br />
+                      {order.email}
+                    </>
+                  )}
                 </p>
+                {digitalOnly && (
+                  <p className="mt-2 text-muted-foreground">
+                    Dijital teslimat — hediye kartı kodu ödeme onayında e-posta ile gider, kargo yok.
+                  </p>
+                )}
                 {order.note && (
                   <p className="mt-2">
                     <span className="font-semibold">Not:</span>{" "}
@@ -209,6 +266,12 @@ function OrderRow({
 
             {/* Yönetim */}
             <div className="space-y-4">
+              {unpaidGiftCards && (
+                <p className="rounded-md border border-amber-200 bg-amber-100 p-3 text-[11px] leading-relaxed text-amber-900">
+                  Havale görünce ödemeyi “Ödendi” yapın. Hediye kartı kodu o anda üretilir ve
+                  müşteriye (alıcı varsa ona da) mail gider. Onaydan önce kod kullanılamaz.
+                </p>
+              )}
               <div>
                 <label className="mb-1.5 block text-xs font-semibold">Sipariş Durumu</label>
                 <select
@@ -217,7 +280,14 @@ function OrderRow({
                   onChange={(e) => void update({ status: e.target.value })}
                   className="w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-accent"
                 >
-                  {STATUSES.map((s) => (
+                  {STATUSES.filter((s) =>
+                    digitalOnly
+                      ? s === "PENDING" ||
+                        s === "CONFIRMED" ||
+                        s === "CANCELLED" ||
+                        s === order.status
+                      : true,
+                  ).map((s) => (
                     <option key={s} value={s}>
                       {ORDER_STATUS_TR[s]}
                     </option>
@@ -238,11 +308,15 @@ function OrderRow({
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  "Ödendi" seçilince satın alınan hediye kartları aktifleşir.
-                </p>
+                {hasGiftCards && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    “Ödendi” seçilince hediye kartı kodu üretilir ve müşteriye mail gider.
+                  </p>
+                )}
               </div>
               <ShippingPanel order={order} onChanged={onChanged} />
+              {!digitalOnly && (
+                <>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold">Kargo Firması</label>
                 <input
@@ -269,6 +343,8 @@ function OrderRow({
                   </button>
                 </div>
               </div>
+                </>
+              )}
               {order.status !== "CANCELLED" && (
                 <button
                   disabled={busy}

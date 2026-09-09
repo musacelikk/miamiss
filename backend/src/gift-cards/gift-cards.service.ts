@@ -13,7 +13,16 @@ export class GiftCardsService {
     return `GIFT-${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}`;
   }
 
-  /** Satin alinan hediye karti kaydi (odeme onaylanana kadar PENDING). */
+  /** Odeme onayi oncesi kullanilamaz yer tutucu; GIFT- prefixi yok. */
+  private generateHoldCode(): string {
+    return `WAIT-${randomBytes(12).toString('hex').toUpperCase()}`;
+  }
+
+  private isIssuedCode(code: string): boolean {
+    return code.startsWith('GIFT-');
+  }
+
+  /** Satin alinan hediye karti: odeme onaylanana kadar kod uretilmez, kullanilamaz. */
   async createPending(data: {
     amount: number;
     purchaserEmail: string;
@@ -25,7 +34,7 @@ export class GiftCardsService {
     expiresAt.setFullYear(expiresAt.getFullYear() + 1);
     return this.cards.save(
       this.cards.create({
-        code: this.generateCode(),
+        code: this.generateHoldCode(),
         initialAmount: data.amount,
         balance: data.amount,
         status: GiftCardStatus.PENDING,
@@ -41,7 +50,7 @@ export class GiftCardsService {
   async check(code: string): Promise<GiftCard> {
     const card = await this.cards.findOne({ where: { code: code.trim().toUpperCase() } });
     if (!card) throw new BadRequestException('Hediye kartı bulunamadı.');
-    if (card.status === GiftCardStatus.PENDING) {
+    if (card.status === GiftCardStatus.PENDING || !this.isIssuedCode(card.code)) {
       throw new BadRequestException('Bu hediye kartı henüz aktifleşmedi (ödeme bekleniyor).');
     }
     if (card.status === GiftCardStatus.DISABLED) {
@@ -76,7 +85,41 @@ export class GiftCardsService {
     await this.cards.save(card);
   }
 
-  async activate(cardId: string) {
-    await this.cards.update({ id: cardId }, { status: GiftCardStatus.ACTIVE });
+  /**
+   * Odeme onayinda cagrilir. Yer tutucu kodu gercek GIFT koduna cevirir.
+   * Zaten GIFT- kodu varsa (eski PENDING kayitlar) sadece aktiflestirir.
+   * Iptal edilmis kartlari (DISABLED) odeme akisi yeniden acmaz; admin force ile acabilir.
+   */
+  async activate(cardId: string, opts?: { force?: boolean }): Promise<GiftCard> {
+    const card = await this.cards.findOne({ where: { id: cardId } });
+    if (!card) throw new BadRequestException('Hediye kartı bulunamadı.');
+    if (card.status === GiftCardStatus.DEPLETED) return card;
+    if (card.status === GiftCardStatus.ACTIVE && this.isIssuedCode(card.code)) return card;
+    if (card.status === GiftCardStatus.DISABLED && !opts?.force) return card;
+    if (!this.isIssuedCode(card.code)) {
+      card.code = this.generateCode();
+    }
+    card.status = GiftCardStatus.ACTIVE;
+    return this.cards.save(card);
+  }
+
+  /** Musteri yanitlarinda odeme onayi oncesi kodu gizler. */
+  publicCode(card: { code: string; status: GiftCardStatus | string }): string {
+    if (card.status === GiftCardStatus.ACTIVE || card.status === GiftCardStatus.DEPLETED) {
+      return this.isIssuedCode(card.code) ? card.code : '';
+    }
+    return '';
+  }
+
+  hideUnissuedCodes<T extends { items?: { boughtGiftCard?: GiftCard | null }[] }>(order: T): T {
+    for (const item of order.items ?? []) {
+      const gc = item.boughtGiftCard;
+      if (!gc) continue;
+      const code = this.publicCode(gc);
+      if (gc.code !== code) {
+        item.boughtGiftCard = { ...gc, code } as GiftCard;
+      }
+    }
+    return order;
   }
 }

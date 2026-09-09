@@ -193,7 +193,7 @@ export const DEFAULT_HOMEPAGE: HomepageSettings = {
   heroPrimaryUrl: "/urunler",
   heroSecondaryText: "Hediye Kartı",
   heroSecondaryUrl: "/hediye-karti",
-  heroBadge: "El İşçiliği",
+  heroBadge: "",
   heroImages: [
     "/products/placeholder-5.jpg",
     "/products/placeholder-1.jpg",
@@ -351,6 +351,14 @@ export function estimateShippingCost(
   return tier.price
 }
 
+export interface BoughtGiftCard {
+  code: string
+  status: string
+  recipientName?: string | null
+  recipientEmail?: string | null
+  message?: string | null
+}
+
 export interface OrderItem {
   id: string
   itemType: "PRODUCT" | "GIFT_CARD"
@@ -363,7 +371,7 @@ export interface OrderItem {
   imageUrl: string | null
   unitPrice: number
   quantity: number
-  boughtGiftCard?: { code: string; status: string } | null
+  boughtGiftCard?: BoughtGiftCard | null
 }
 
 export interface Order {
@@ -423,6 +431,24 @@ export const PAYMENT_METHOD_TR: Record<Order["paymentMethod"], string> = {
   BANK_TRANSFER: "Havale / EFT",
   COD: "Kapıda Ödeme",
   CARD: "Kredi Kartı",
+}
+
+export function orderHasGiftCards(order: Pick<Order, "items">): boolean {
+  return (order.items ?? []).some((i) => i.itemType === "GIFT_CARD")
+}
+
+/** Yalnızca hediye kartı — fiziksel kargo yok. */
+export function orderIsDigitalOnly(order: Pick<Order, "items">): boolean {
+  const items = order.items ?? []
+  return items.length > 0 && items.every((i) => i.itemType === "GIFT_CARD")
+}
+
+export function isIssuedGiftCard(gc?: BoughtGiftCard | null): boolean {
+  return (
+    !!gc &&
+    (gc.status === "ACTIVE" || gc.status === "DEPLETED") &&
+    gc.code.startsWith("GIFT-")
+  )
 }
 
 /** Görsel URL'i: backend'den mutlak gelirse aynen, göreliyse frontend public'ten */

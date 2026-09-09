@@ -171,7 +171,7 @@ export const DEFAULT_HOMEPAGE: HomepageSettings = {
   heroPrimaryUrl: '/urunler',
   heroSecondaryText: 'Hediye Kartı',
   heroSecondaryUrl: '/hediye-karti',
-  heroBadge: 'El İşçiliği',
+  heroBadge: '',
   heroImages: [
     '/products/placeholder-5.jpg',
     '/products/placeholder-1.jpg',

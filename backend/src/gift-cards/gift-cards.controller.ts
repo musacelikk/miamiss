@@ -49,6 +49,9 @@ export class GiftCardsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   async setStatus(@Param('id') id: string, @Body() dto: StatusDto) {
+    if (dto.status === GiftCardStatus.ACTIVE) {
+      return this.service.activate(id, { force: true });
+    }
     const card = await this.cards.findOne({ where: { id } });
     if (!card) throw new NotFoundException('Hediye kartı bulunamadı.');
     card.status = dto.status;

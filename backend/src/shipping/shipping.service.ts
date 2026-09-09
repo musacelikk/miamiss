@@ -98,18 +98,31 @@ export class ShippingService {
 
   /**
    * Kargo etiketinde "ÜRÜNLER" bolumunde basilacak satirlar. Dijital hediye
-   * kartlari fiziksel gonderiye girmez. Geliver bos kalem listesini kabul
-   * etmedigi icin gonderilecek urun kalmazsa siparis numarasi tek satir olur.
+   * kartlari fiziksel gonderiye girmez. Cagiran taraf fiziksel kalem oldugunu
+   * once dogrulamalidir; yinede bos kalirsa Geliver bos listeyi reddettigi
+   * icin siparis numarasi tek satir olur.
    */
   private shipmentItems(order: Order): GeliverShipmentItem[] {
     const lines = (order.items ?? [])
       .filter((i) => i.itemType === OrderItemType.PRODUCT)
       .map((i) => ({
-        // Etiket alani sinirli; uzun adlar kirpilir
         title: `${i.name}${i.variantName ? ` (${i.variantName})` : ''}`.trim().slice(0, 100),
         quantity: i.quantity,
       }));
     return lines.length ? lines : [{ title: `Sipariş ${order.orderNo}`, quantity: 1 }];
+  }
+
+  private hasPhysicalItems(order: Order): boolean {
+    return (order.items ?? []).some((i) => i.itemType === OrderItemType.PRODUCT);
+  }
+
+  /** Hediye karti dijital teslim edilir; yalnizca kart olan siparise kargo yok. */
+  private assertPhysicalShipment(order: Order): void {
+    if (!this.hasPhysicalItems(order)) {
+      throw new BadRequestException(
+        'Bu siparişte fiziksel ürün yok. Hediye kartı e-posta ile teslim edilir, kargo oluşturulmaz.',
+      );
+    }
   }
 
   private async shipmentInput(order: Order): Promise<GeliverShipmentInput> {
@@ -216,6 +229,8 @@ export class ShippingService {
     if (!order) return;
     if (order.labelUrl || order.geliverShipmentId) return;
     if (order.status === OrderStatus.CANCELLED) return;
+    // Hediye karti siparisi: kargo yok, hata da yazilmaz
+    if (!this.hasPhysicalItems(order)) return;
 
     try {
       this.assertShippable(order);
@@ -255,6 +270,7 @@ export class ShippingService {
   async offersForOrder(orderId: string): Promise<GeliverOffer[]> {
     const order = await this.findOrder(orderId);
     this.assertNoShipment(order);
+    this.assertPhysicalShipment(order);
     this.assertShippable(order);
     const draft = await this.geliver.createDraftWithOffers(await this.shipmentInput(order));
     return draft.offers;
@@ -264,6 +280,7 @@ export class ShippingService {
   async createForOrder(orderId: string, offerId?: string): Promise<Order> {
     const order = await this.findOrder(orderId);
     this.assertNoShipment(order);
+    this.assertPhysicalShipment(order);
     this.assertShippable(order);
     let acceptId = offerId;
     if (!acceptId) {

@@ -223,6 +223,16 @@ export function ShippingPanel({ order, onChanged }: { order: Order; onChanged: (
   }, [])
 
   if (enabled === null) return null
+  const digitalOnly =
+    (order.items?.length ?? 0) > 0 &&
+    order.items.every((i) => i.itemType === "GIFT_CARD")
+  if (digitalOnly) {
+    return (
+      <p className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
+        Bu sipariş yalnızca hediye kartı. Kart e-posta ile teslim edilir, kargo oluşturulmaz.
+      </p>
+    )
+  }
   if (!enabled) {
     return (
       <p className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">

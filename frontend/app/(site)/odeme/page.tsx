@@ -260,7 +260,12 @@ export default function CheckoutPage() {
       completedRef.current = true
       sessionStorage.setItem(
         "miamiss_last_order",
-        JSON.stringify({ ...res, email: form.email }),
+        JSON.stringify({
+          ...res,
+          email: form.email,
+          hasGiftCards: giftCards.length > 0,
+          digitalOnly: items.length === 0 && giftCards.length > 0,
+        }),
       )
       if (payMethod === "CARD") {
         // 3D HTML'i tam sayfa yazilir; banka dogrulamasi sonrasi PayTR

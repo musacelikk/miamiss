@@ -54,7 +54,7 @@ export class AdminOrdersController {
     const currentPage = Math.max(1, page ? parseInt(page, 10) : 1);
     const [items, total] = await this.orders.findAndCount({
       where: status ? { status } : {},
-      relations: { items: true, user: true },
+      relations: { items: { boughtGiftCard: true }, user: true },
       order: { createdAt: 'DESC' },
       take,
       skip: (currentPage - 1) * take,
