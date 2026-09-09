@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Mia Miss — traverten paleti: fildişi zemin, espresso metin, bronz vurgu */
+  /* Mia Misu — traverten paleti: fildişi zemin, espresso metin, bronz vurgu */
   --background: oklch(0.977 0.007 85);
   --foreground: oklch(0.26 0.016 65);
   --card: oklch(0.995 0.004 85);
