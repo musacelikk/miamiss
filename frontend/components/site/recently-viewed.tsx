@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { History } from "lucide-react"
-import { imageUrl, type Product } from "@/lib/api"
+import { api, ApiError, imageUrl, type Product } from "@/lib/api"
 import { formatPrice } from "@/lib/format"
 
 const KEY = "miamiss_recently_viewed"
@@ -47,11 +47,50 @@ export function RecentlyViewed({
   const [items, setItems] = useState<ViewedItem[]>([])
 
   useEffect(() => {
+    let list: ViewedItem[] = []
     try {
-      const list: ViewedItem[] = JSON.parse(localStorage.getItem(KEY) ?? "[]")
-      setItems(list.filter((i) => i.id !== excludeId).slice(0, 6))
+      list = JSON.parse(localStorage.getItem(KEY) ?? "[]")
     } catch {
-      /* yoksay */
+      return
+    }
+    const visible = list.filter((i) => i.id !== excludeId).slice(0, 6)
+    setItems(visible)
+
+    // localStorage'daki kopya bayatlayabilir (fiyat/isim/gorsel degisir, urun kalkar);
+    // guncel veriyi cekip hem listeyi hem depoyu tazele.
+    let cancelled = false
+    Promise.all(
+      visible.map((i) =>
+        api<Product>(`/products/${i.slug}?track=0`, { auth: false }).then(
+          (p): ViewedItem | null =>
+            p.isActive === false
+              ? null
+              : {
+                  id: p.id,
+                  slug: p.slug,
+                  name: p.name,
+                  price: p.price,
+                  image: p.images?.[0]?.url ?? null,
+                },
+          // urun kaldirildiysa listeden dus; ag hatasinda eski kaydi koru
+          (err) => (err instanceof ApiError && err.status === 404 ? null : i),
+        ),
+      ),
+    ).then((fresh) => {
+      if (cancelled) return
+      const byId = new Map(visible.map((v, idx) => [v.id, fresh[idx]]))
+      setItems(fresh.filter((f): f is ViewedItem => f !== null))
+      try {
+        const updated = list
+          .map((i) => (byId.has(i.id) ? byId.get(i.id)! : i))
+          .filter((i): i is ViewedItem => i !== null)
+        localStorage.setItem(KEY, JSON.stringify(updated))
+      } catch {
+        /* yoksay */
+      }
+    })
+    return () => {
+      cancelled = true
     }
   }, [excludeId])
 
